@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Colonization</title>
+  <meta name="description" content="2D Architectural Section Space Colonization tool for manual shape drawing, custom root placement, and curvilinear/rectilinear branching.">
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 2D Canvas Viewport -->
+  <div id="viewport-container">
+    <canvas id="canvas2d"></canvas>
+    <div id="draw-dim-badge">0 x 0</div>
+  </div>
+
+  <!-- Top Bar -->
+  <header id="top-bar" class="glass-panel">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <span class="brand-title">Space Colonization</span>
+      <span class="brand-tag">Section 2D Morphology</span>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-export-svg" class="btn btn-primary" title="Export 2D section as vector SVG for CAD / Illustrator / Rhino">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Export SVG
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar Controls Drawer -->
+  <aside id="sidebar" class="glass-panel">
+    <!-- Drawing & Placement Tools -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Drawing & Placement Tools</span>
+      </div>
+
+      <div class="tool-bar-group" style="grid-template-columns: repeat(3, 1fr); gap: 6px;">
+        <button id="tool-select" class="tool-btn" title="Select, Move, or Resize shapes & Drag root points">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+          Select/Move
+        </button>
+        <button id="tool-rect" class="tool-btn active" title="Click & drag on canvas to draw rectangle/square">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Rect
+        </button>
+        <button id="tool-circle" class="tool-btn" title="Click & drag on canvas to draw circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+          Circle
+        </button>
+        <button id="tool-point" class="tool-btn" title="Click on canvas to place individual point attractor">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>
+          + Point
+        </button>
+        <button id="tool-erase" class="tool-btn" title="Click near any attractor point or shape to erase it">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M19 6l-9 9M5 15l4 4L20 8l-4-4L5 15z"/></svg>
+          Erase
+        </button>
+        <button id="tool-root" class="tool-btn" title="Click on canvas to add an extra Root starting point">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M5 12h14"/><circle cx="12" cy="12" r="6"/></svg>
+          + Root
+        </button>
+      </div>
+
+      <div class="btn-group-grid" style="margin-top: 8px;">
+        <button id="btn-clear-attractors" class="btn" style="border-color: rgba(251, 113, 133, 0.4); color: #fb7185;">
+          Clear Shapes
+        </button>
+        <button id="btn-single-root" class="btn" title="Reset to one single root at origin">
+          Single Root
+        </button>
+      </div>
+    </div>
+
+    <!-- Active / Selected Shape Editor -->
+    <div class="section" id="section-selected-shape" style="background: rgba(56, 189, 248, 0.08); padding: 12px; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.3);">
+      <div class="section-header" style="border-bottom: none; padding-bottom: 0;">
+        <span class="section-title" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <span id="label-selected-shape">Selected Shape: None</span>
+        </span>
+      </div>
+
+      <div class="control-group" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Attractors within this Shape</span>
+          <span id="val-selected-count" class="control-val">150</span>
+        </div>
+        <input id="input-selected-count" type="range" min="10" max="600" step="5" value="150">
+        <span class="hint-badge">Adjust points in the selected shape live</span>
+      </div>
+
+      <div class="toggle-row" style="margin-top: 6px;">
+        <span style="font-size: 11px; color: #cbd5e1;">Hollow Boundary Only</span>
+        <label class="switch">
+          <input id="toggle-selected-hollow" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="btn-group-grid" style="margin-top: 8px;">
+        <button id="btn-delete-shape" class="btn" style="border-color: rgba(251, 113, 133, 0.4); color: #fb7185; font-size: 11px;">
+          Delete Shape
+        </button>
+        <button id="btn-deselect-shape" class="btn" style="font-size: 11px;">
+          Deselect
+        </button>
+      </div>
+    </div>
+
+    <!-- Playback & Simulation -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Simulation Controls</span>
+      </div>
+      <div class="btn-group-grid">
+        <button id="btn-play" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Play
+        </button>
+        <button id="btn-step" class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          Step
+        </button>
+      </div>
+      <button id="btn-reset-all" class="btn" style="width: 100%;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Reset Everything
+      </button>
+    </div>
+
+    <!-- Curvilinear vs Rectilinear Morphology -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Curvature & Morphology</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Curvilinear / Rectilinear</span>
+          <span id="val-rectilinear" class="control-val">0% (Organic)</span>
+        </div>
+        <input id="input-rectilinear" type="range" min="0" max="1" step="0.05" value="0">
+        <span class="hint-badge">0% = Organic Curves | 100% = Orthogonal 90° Grid</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Curvilinear Inertia</span>
+          <span id="val-smoothness" class="control-val">50%</span>
+        </div>
+        <input id="input-smoothness" type="range" min="0" max="1" step="0.05" value="0.5">
+        <span class="hint-badge">Momentum and smoothness of branching curve</span>
+      </div>
+
+      <!-- Closed Venation (Loop Closure / Anastomosis) -->
+      <div class="toggle-row" style="margin-top: 6px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Closed Venation (Loops)</span>
+        <label class="switch">
+          <input id="toggle-closed-venation" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control-group" id="group-loop-rate" style="margin-top: 4px;">
+        <div class="control-label-row">
+          <span>Loop Density</span>
+          <span id="val-loop-rate" class="control-val">50%</span>
+        </div>
+        <input id="input-loop-rate" type="range" min="0.05" max="1.0" step="0.05" value="0.5">
+        <span class="hint-badge">Off = Open Dendritic Tree | On = Closed Reticulate Loops</span>
+      </div>
+    </div>
+
+    <!-- Colonization Parameters -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Growth Parameters</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Influence Radius (Di)</span>
+          <span id="val-influence" class="control-val">65px</span>
+        </div>
+        <input id="input-influence" type="range" min="20" max="160" step="5" value="65">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Kill Radius (Dk)</span>
+          <span id="val-kill" class="control-val">12px</span>
+        </div>
+        <input id="input-kill" type="range" min="4" max="40" step="1" value="12">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Segment Length (Step)</span>
+          <span id="val-segment" class="control-val">8px</span>
+        </div>
+        <input id="input-segment" type="range" min="3" max="25" step="1" value="8">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Vertical Tropism</span>
+          <span id="val-tropism" class="control-val">-0.25 (Upward)</span>
+        </div>
+        <input id="input-tropism" type="range" min="-0.8" max="0.8" step="0.05" value="-0.25">
+        <span class="hint-badge">Negative = Upward vertical structural bias</span>
+      </div>
+    </div>
+
+    <!-- Color Gradient & Shading -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Color Gradient</span>
+      </div>
+
+      <div class="color-picker-group">
+        <div class="color-item">
+          <span>Root Color</span>
+          <input id="input-color-root" type="color" value="#0ea5e9">
+        </div>
+        <div class="color-item">
+          <span>Tip Color</span>
+          <input id="input-color-tip" type="color" value="#f43f5e">
+        </div>
+      </div>
+
+      <div class="control-group" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Branch Caliber</span>
+          <span id="val-thick" class="control-val">1.2x</span>
+        </div>
+        <input id="input-thick" type="range" min="0.4" max="3.0" step="0.1" value="1.2">
+      </div>
+
+      <div class="toggle-row">
+        <span style="font-size: 12px; color: #cbd5e1;">Show Attractors</span>
+        <label class="switch">
+          <input id="toggle-attractors" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Stats HUD -->
+  <div id="stats-hud">
+    <div class="glass-panel stat-pill">
+      <span class="stat-label">Nodes</span>
+      <span id="stat-nodes" class="stat-value">1</span>
+    </div>
+    <div class="glass-panel stat-pill">
+      <span class="stat-label">Attractors</span>
+      <span id="stat-attractors" class="stat-value">0</span>
+    </div>
+    <div class="glass-panel stat-pill">
+      <span class="stat-label">Cycles</span>
+      <span id="stat-iterations" class="stat-value">0</span>
+    </div>
+    <div class="glass-panel stat-pill">
+      <span class="stat-label">State</span>
+      <span id="stat-status" class="stat-value" style="color: var(--accent-amber);">Ready</span>
+    </div>
+  </div>
+
+  <!-- Main 2D Script -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

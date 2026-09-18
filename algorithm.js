@@ -1,0 +1,608 @@
+export class TreeNode2D {
+  constructor(x, y, parent = null, depth = 0) {
+    this.id = TreeNode2D.nextId++;
+    this.x = x;
+    this.y = y;
+    this.parent = parent;
+    this.children = [];
+    this.depth = depth;
+    this.thickness = 1.0;
+    this.descendantCount = 1;
+
+    // Per-step accumulator
+    this.accumX = 0;
+    this.accumY = 0;
+    this.influenceCount = 0;
+  }
+
+  resetInfluence() {
+    this.accumX = 0;
+    this.accumY = 0;
+    this.influenceCount = 0;
+  }
+
+  static nextId = 0;
+}
+
+export class DrawnShape {
+  constructor(options = {}) {
+    this.id = DrawnShape.nextId++;
+    this.type = options.type || 'rect'; // 'rect' | 'circle'
+    this.name = options.name || `${this.type === 'rect' ? 'Rectangle' : 'Circle'} #${this.id}`;
+
+    // Rect dimensions
+    this.x1 = options.x1 !== undefined ? options.x1 : -100;
+    this.y1 = options.y1 !== undefined ? options.y1 : -200;
+    this.x2 = options.x2 !== undefined ? options.x2 : 100;
+    this.y2 = options.y2 !== undefined ? options.y2 : -100;
+
+    // Circle dimensions
+    this.cx = options.cx !== undefined ? options.cx : 0;
+    this.cy = options.cy !== undefined ? options.cy : -150;
+    this.radius = options.radius !== undefined ? options.radius : 60;
+
+    this.count = options.count !== undefined ? options.count : 150;
+    this.hollow = options.hollow !== undefined ? options.hollow : false;
+    this.attractors = [];
+    this.generateAttractors();
+  }
+
+  generateAttractors() {
+    this.attractors = [];
+    if (this.type === 'rect') {
+      const minX = Math.min(this.x1, this.x2);
+      const maxX = Math.max(this.x1, this.x2);
+      const minY = Math.min(this.y1, this.y2);
+      const maxY = Math.max(this.y1, this.y2);
+      const w = maxX - minX;
+      const h = maxY - minY;
+      if (w <= 0 || h <= 0) return;
+
+      for (let i = 0; i < this.count; i++) {
+        let x, y;
+        if (this.hollow) {
+          const perimeter = 2 * (w + h);
+          const dist = Math.random() * perimeter;
+          if (dist < w) {
+            x = minX + dist;
+            y = minY;
+          } else if (dist < w + h) {
+            x = maxX;
+            y = minY + (dist - w);
+          } else if (dist < 2 * w + h) {
+            x = maxX - (dist - (w + h));
+            y = maxY;
+          } else {
+            x = minX;
+            y = maxY - (dist - (2 * w + h));
+          }
+        } else {
+          x = minX + Math.random() * w;
+          y = minY + Math.random() * h;
+        }
+        this.attractors.push({ x, y, id: Math.random(), shapeId: this.id });
+      }
+    } else if (this.type === 'circle') {
+      if (this.radius <= 0) return;
+      for (let i = 0; i < this.count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const r = this.hollow ? this.radius * (0.94 + Math.random() * 0.06) : this.radius * Math.sqrt(Math.random());
+        const x = this.cx + r * Math.cos(theta);
+        const y = this.cy + r * Math.sin(theta);
+        this.attractors.push({ x, y, id: Math.random(), shapeId: this.id });
+      }
+    }
+  }
+
+  containsPoint(wx, wy) {
+    if (this.type === 'rect') {
+      const minX = Math.min(this.x1, this.x2);
+      const maxX = Math.max(this.x1, this.x2);
+      const minY = Math.min(this.y1, this.y2);
+      const maxY = Math.max(this.y1, this.y2);
+      return wx >= minX - 8 && wx <= maxX + 8 && wy >= minY - 8 && wy <= maxY + 8;
+    } else if (this.type === 'circle') {
+      const dist = Math.hypot(wx - this.cx, wy - this.cy);
+      return dist <= this.radius + 8;
+    }
+    return false;
+  }
+
+  move(dx, dy) {
+    if (this.type === 'rect') {
+      this.x1 += dx;
+      this.x2 += dx;
+      this.y1 += dy;
+      this.y2 += dy;
+    } else if (this.type === 'circle') {
+      this.cx += dx;
+      this.cy += dy;
+    }
+    this.generateAttractors();
+  }
+
+  getResizeHandles() {
+    if (this.type === 'rect') {
+      const minX = Math.min(this.x1, this.x2);
+      const maxX = Math.max(this.x1, this.x2);
+      const minY = Math.min(this.y1, this.y2);
+      const maxY = Math.max(this.y1, this.y2);
+      return [
+        { name: 'tl', x: minX, y: minY },
+        { name: 'tr', x: maxX, y: minY },
+        { name: 'bl', x: minX, y: maxY },
+        { name: 'br', x: maxX, y: maxY },
+      ];
+    } else if (this.type === 'circle') {
+      return [
+        { name: 'radius-r', x: this.cx + this.radius, y: this.cy },
+        { name: 'radius-t', x: this.cx, y: this.cy - this.radius },
+      ];
+    }
+    return [];
+  }
+
+  getHandleNear(wx, wy, threshold = 12) {
+    const handles = this.getResizeHandles();
+    for (const h of handles) {
+      if (Math.hypot(wx - h.x, wy - h.y) <= threshold) {
+        return h.name;
+      }
+    }
+    return null;
+  }
+
+  resize(handleName, wx, wy) {
+    if (this.type === 'rect') {
+      const minX = Math.min(this.x1, this.x2);
+      const maxX = Math.max(this.x1, this.x2);
+      const minY = Math.min(this.y1, this.y2);
+      const maxY = Math.max(this.y1, this.y2);
+
+      if (handleName === 'tl') {
+        this.x1 = wx; this.y1 = wy; this.x2 = maxX; this.y2 = maxY;
+      } else if (handleName === 'tr') {
+        this.x1 = minX; this.y1 = wy; this.x2 = wx; this.y2 = maxY;
+      } else if (handleName === 'bl') {
+        this.x1 = wx; this.y1 = minY; this.x2 = maxX; this.y2 = wy;
+      } else if (handleName === 'br') {
+        this.x1 = minX; this.y1 = minY; this.x2 = wx; this.y2 = wy;
+      }
+    } else if (this.type === 'circle') {
+      const r = Math.hypot(wx - this.cx, wy - this.cy);
+      this.radius = Math.max(12, r);
+    }
+    this.generateAttractors();
+  }
+
+  static nextId = 1;
+}
+
+export class SpaceColonization2D {
+  constructor(options = {}) {
+    this.influenceRadius = options.influenceRadius || 60;
+    this.killRadius = options.killRadius || 12;
+    this.segmentLength = options.segmentLength || 8;
+    this.tropismX = options.tropismX || 0;
+    this.tropismY = options.tropismY !== undefined ? options.tropismY : -0.25;
+    this.rectilinearSnap = options.rectilinearSnap || 0;
+    this.curvilinearSmoothness = options.curvilinearSmoothness !== undefined ? options.curvilinearSmoothness : 0.5;
+    this.closedVenation = options.closedVenation || false; // Open (tree) vs Closed (anastomosing loops)
+    this.loopRate = options.loopRate !== undefined ? options.loopRate : 0.5; // Anastomosis loop density
+
+    this.nodes = [];
+    this.roots = []; // Array of { id, x, y }
+    this.shapes = []; // Array of DrawnShape
+    this.manualPoints = []; // Array of { x, y, id }
+    this.attractors = []; // Active pool of attractors for growth
+    this.anastomosisEdges = []; // Array of { nodeA, nodeB } for closed loop cycles
+    this.iterations = 0;
+    this.isFinished = false;
+  }
+
+  clear() {
+    TreeNode2D.nextId = 0;
+    DrawnShape.nextId = 1;
+    this.nodes = [];
+    this.roots = [];
+    this.shapes = [];
+    this.manualPoints = [];
+    this.attractors = [];
+    this.anastomosisEdges = [];
+    this.iterations = 0;
+    this.isFinished = false;
+  }
+
+  clearAttractors() {
+    this.shapes = [];
+    this.manualPoints = [];
+    this.attractors = [];
+    this.anastomosisEdges = [];
+    this.isFinished = false;
+  }
+
+  resetTree() {
+    TreeNode2D.nextId = 0;
+    this.nodes = [];
+    this.anastomosisEdges = [];
+    this.iterations = 0;
+    this.isFinished = false;
+
+    // Create starting node for every root point
+    for (const r of this.roots) {
+      const freshNode = new TreeNode2D(r.x, r.y);
+      this.nodes.push(freshNode);
+    }
+    this.rebuildAttractors();
+  }
+
+  setRoot(x, y) {
+    this.roots = [{ id: 1, x, y }];
+    this.resetTree();
+    return this.roots[0];
+  }
+
+  addRoot(x, y) {
+    const newId = this.roots.length > 0 ? Math.max(...this.roots.map((r) => r.id)) + 1 : 1;
+    const root = { id: newId, x, y };
+    this.roots.push(root);
+    this.resetTree();
+    return root;
+  }
+
+  moveRoot(id, x, y) {
+    const r = this.roots.find((root) => root.id === id);
+    if (r) {
+      r.x = x;
+      r.y = y;
+      if (this.nodes.length <= this.roots.length) {
+        this.resetTree();
+      }
+    }
+  }
+
+  removeRoot(id) {
+    if (this.roots.length <= 1) return;
+    this.roots = this.roots.filter((r) => r.id !== id);
+    this.resetTree();
+  }
+
+  getRootNear(wx, wy, threshold = 16) {
+    for (const r of this.roots) {
+      if (Math.hypot(wx - r.x, wy - r.y) <= threshold) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  addShape(shape) {
+    this.shapes.push(shape);
+    this.rebuildAttractors();
+    return shape;
+  }
+
+  updateShape(shapeId, updates = {}) {
+    const shape = this.shapes.find((s) => s.id === shapeId);
+    if (!shape) return null;
+
+    if (updates.count !== undefined) shape.count = updates.count;
+    if (updates.hollow !== undefined) shape.hollow = updates.hollow;
+
+    shape.generateAttractors();
+    this.rebuildAttractors();
+    return shape;
+  }
+
+  removeShape(shapeId) {
+    this.shapes = this.shapes.filter((s) => s.id !== shapeId);
+    this.rebuildAttractors();
+  }
+
+  rebuildAttractors() {
+    this.attractors = [];
+    for (const shape of this.shapes) {
+      this.attractors.push(...shape.attractors);
+    }
+    for (const pt of this.manualPoints) {
+      this.attractors.push(pt);
+    }
+    this.isFinished = false;
+  }
+
+  addPointAttractor(x, y) {
+    const pt = { x, y, id: Math.random() };
+    this.manualPoints.push(pt);
+    this.attractors.push(pt);
+    this.isFinished = false;
+    return pt;
+  }
+
+  removeAttractorNear(wx, wy, threshold = 14) {
+    // 1. Manual points
+    for (let i = 0; i < this.manualPoints.length; i++) {
+      const pt = this.manualPoints[i];
+      if (Math.hypot(wx - pt.x, wy - pt.y) <= threshold) {
+        this.manualPoints.splice(i, 1);
+        this.rebuildAttractors();
+        return true;
+      }
+    }
+
+    // 2. Shape points
+    for (const shape of this.shapes) {
+      for (let i = 0; i < shape.attractors.length; i++) {
+        const pt = shape.attractors[i];
+        if (Math.hypot(wx - pt.x, wy - pt.y) <= threshold) {
+          shape.attractors.splice(i, 1);
+          shape.count = shape.attractors.length;
+          this.rebuildAttractors();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  runToCompletion(maxSteps = 220) {
+    this.resetTree();
+    let stepCount = 0;
+    while (!this.isFinished && stepCount < maxSteps) {
+      const active = this.step();
+      if (!active) break;
+      stepCount++;
+    }
+    if (this.closedVenation) {
+      this.updateClosedVenation();
+    }
+    return stepCount;
+  }
+
+  step() {
+    if (this.attractors.length === 0 || this.nodes.length === 0) {
+      this.isFinished = true;
+      return false;
+    }
+
+    // 1. Reset influence on nodes
+    for (let i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].resetInfluence();
+    }
+
+    const killDistSq = this.killRadius * this.killRadius;
+    const inflDistSq = this.influenceRadius * this.influenceRadius;
+
+    const remainingAttractors = [];
+    let killed = 0;
+
+    // 2. Associate attractors with nearest nodes
+    for (let i = 0; i < this.attractors.length; i++) {
+      const attr = this.attractors[i];
+      let closestNode = null;
+      let minDistanceSq = Infinity;
+
+      for (let j = 0; j < this.nodes.length; j++) {
+        const node = this.nodes[j];
+        const dx = attr.x - node.x;
+        const dy = attr.y - node.y;
+        const dSq = dx * dx + dy * dy;
+
+        if (dSq < minDistanceSq) {
+          minDistanceSq = dSq;
+          closestNode = node;
+        }
+      }
+
+      // Check kill radius
+      if (closestNode && minDistanceSq <= killDistSq) {
+        killed++;
+        continue;
+      }
+
+      // Check influence radius
+      if (closestNode && minDistanceSq <= inflDistSq) {
+        const dist = Math.sqrt(minDistanceSq);
+        if (dist > 0.0001) {
+          closestNode.accumX += (attr.x - closestNode.x) / dist;
+          closestNode.accumY += (attr.y - closestNode.y) / dist;
+          closestNode.influenceCount++;
+        }
+      }
+
+      remainingAttractors.push(attr);
+    }
+
+    this.attractors = remainingAttractors;
+
+    // 3. Grow branches from influenced nodes
+    let newNodesCreated = 0;
+    const nodeCount = this.nodes.length;
+
+    for (let i = 0; i < nodeCount; i++) {
+      const node = this.nodes[i];
+      if (node.influenceCount > 0) {
+        let dirX = node.accumX / node.influenceCount;
+        let dirY = node.accumY / node.influenceCount;
+
+        // Apply tropism (e.g. upward load/growth bias)
+        dirX += this.tropismX;
+        dirY += this.tropismY;
+
+        let len = Math.hypot(dirX, dirY);
+        if (len > 0.0001) {
+          dirX /= len;
+          dirY /= len;
+        } else {
+          dirX = 0;
+          dirY = -1;
+        }
+
+        // 1. Curvilinear Inertia (smooth curve from parent direction)
+        if (node.parent && this.curvilinearSmoothness > 0) {
+          let pDirX = node.x - node.parent.x;
+          let pDirY = node.y - node.parent.y;
+          const pLen = Math.hypot(pDirX, pDirY);
+          if (pLen > 0.0001) {
+            pDirX /= pLen;
+            pDirY /= pLen;
+            const blend = (1.0 - this.rectilinearSnap) * (this.curvilinearSmoothness * 0.7);
+            dirX = dirX * (1 - blend) + pDirX * blend;
+            dirY = dirY * (1 - blend) + pDirY * blend;
+            const blendedLen = Math.hypot(dirX, dirY);
+            if (blendedLen > 0.0001) {
+              dirX /= blendedLen;
+              dirY /= blendedLen;
+            }
+          }
+        }
+
+        // 2. Rectilinear Orthogonal Snapping (90-degree Grid)
+        if (this.rectilinearSnap > 0.01) {
+          let orthoX = 0;
+          let orthoY = 0;
+          if (Math.abs(dirX) >= Math.abs(dirY)) {
+            orthoX = Math.sign(dirX) || 1;
+            orthoY = 0;
+          } else {
+            orthoX = 0;
+            orthoY = Math.sign(dirY) || 1;
+          }
+
+          dirX = dirX * (1 - this.rectilinearSnap) + orthoX * this.rectilinearSnap;
+          dirY = dirY * (1 - this.rectilinearSnap) + orthoY * this.rectilinearSnap;
+          const snapLen = Math.hypot(dirX, dirY);
+          if (snapLen > 0.0001) {
+            dirX /= snapLen;
+            dirY /= snapLen;
+          }
+        }
+
+        // Add child node
+        const childX = node.x + dirX * this.segmentLength;
+        const childY = node.y + dirY * this.segmentLength;
+        const child = new TreeNode2D(childX, childY, node, node.depth + 1);
+        node.children.push(child);
+        this.nodes.push(child);
+        newNodesCreated++;
+      }
+    }
+
+    this.iterations++;
+
+    // 4. Update Murray's law branch caliber
+    if (newNodesCreated > 0) {
+      this.updateBranchThickness();
+      if (this.closedVenation) {
+        this.updateClosedVenation();
+      }
+    }
+
+    if (this.attractors.length === 0 || newNodesCreated === 0) {
+      this.isFinished = true;
+      return false;
+    }
+
+    return true;
+  }
+
+  updateBranchThickness() {
+    for (let i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].descendantCount = 1;
+    }
+
+    for (let i = this.nodes.length - 1; i >= 0; i--) {
+      const node = this.nodes[i];
+      if (node.parent) {
+        node.parent.descendantCount += node.descendantCount;
+      }
+    }
+
+    const baseThick = 1.0;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      node.thickness = baseThick * Math.pow(node.descendantCount, 0.44);
+    }
+  }
+
+  updateClosedVenation() {
+    this.anastomosisEdges = [];
+    if (!this.closedVenation || this.loopRate <= 0.01 || this.nodes.length < 6) return;
+
+    // Search radius: scales with segment length and loop density
+    const maxDist = this.segmentLength * (1.2 + this.loopRate * 2.5);
+    const maxDistSq = maxDist * maxDist;
+    const linkCounts = new Map();
+
+    for (let i = 0; i < this.nodes.length; i++) {
+      const u = this.nodes[i];
+      if (u.depth < 2) continue; // Skip roots and first segments
+
+      const uLinks = linkCounts.get(u.id) || 0;
+      if (uLinks >= 2) continue;
+
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const v = this.nodes[j];
+        if (v.depth < 2) continue;
+        if (u.parent === v || v.parent === u) continue;
+        if (u.parent && u.parent.parent === v) continue;
+        if (v.parent && v.parent.parent === u) continue;
+
+        const vLinks = linkCounts.get(v.id) || 0;
+        if (vLinks >= 2) continue;
+
+        const dx = u.x - v.x;
+        const dy = u.y - v.y;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq <= maxDistSq) {
+          this.anastomosisEdges.push({ nodeA: u, nodeB: v });
+          linkCounts.set(u.id, uLinks + 1);
+          linkCounts.set(v.id, vLinks + 1);
+          break;
+        }
+      }
+    }
+  }
+
+  // Export 2D Section as clean SVG CAD vector format
+  exportToSVG(width = 1200, height = 800, colorRoot = '#0ea5e9', colorTip = '#f43f5e') {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of this.nodes) {
+      if (n.x < minX) minX = n.x;
+      if (n.x > maxX) maxX = n.x;
+      if (n.y < minY) minY = n.y;
+      if (n.y > maxY) maxY = n.y;
+    }
+    const pad = 40;
+    minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+    const viewW = maxX - minX;
+    const viewH = maxY - minY;
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${viewW} ${viewH}" width="${viewW}" height="${viewH}" style="background:#000000">\n`;
+    svg += `<g fill="none" stroke-linecap="round" stroke-linejoin="round">\n`;
+
+    let maxDepth = 1;
+    for (const n of this.nodes) if (n.depth > maxDepth) maxDepth = n.depth;
+
+    // Primary hierarchical branches
+    for (const node of this.nodes) {
+      if (node.parent) {
+        const t = node.depth / maxDepth;
+        const strokeW = Math.max(1.0, node.thickness * 0.85).toFixed(2);
+        svg += `  <line x1="${node.parent.x.toFixed(2)}" y1="${node.parent.y.toFixed(2)}" x2="${node.x.toFixed(2)}" y2="${node.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.9"/>\n`;
+      }
+    }
+
+    // Closed venation anastomosis loops
+    if (this.closedVenation && this.anastomosisEdges.length > 0) {
+      for (const edge of this.anastomosisEdges) {
+        const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
+        const strokeW = Math.max(0.8, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.7).toFixed(2);
+        svg += `  <line x1="${edge.nodeA.x.toFixed(2)}" y1="${edge.nodeA.y.toFixed(2)}" x2="${edge.nodeB.x.toFixed(2)}" y2="${edge.nodeB.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.85"/>\n`;
+      }
+    }
+
+    svg += `</g>\n</svg>`;
+    return svg;
+  }
+}
