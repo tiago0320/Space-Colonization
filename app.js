@@ -22,6 +22,7 @@ const state = {
   // Visuals
   colorRoot: '#0ea5e9',
   colorTip: '#f43f5e',
+  showThickness: true,
   thickScale: 1.2,
   showAttractors: true,
   isRunning: false,
@@ -45,7 +46,7 @@ const ctx = canvas.getContext('2d');
 const dimBadge = document.getElementById('draw-dim-badge');
 
 let view = {
-  panX: window.innerWidth * 0.5,
+  panX: Math.max(window.innerWidth * 0.5, (window.innerWidth - 380) * 0.5 + 380),
   panY: window.innerHeight * 0.82,
   zoom: 1.0,
 };
@@ -116,7 +117,11 @@ const ui = {
   btnPlay: document.getElementById('btn-play'),
   btnStep: document.getElementById('btn-step'),
   btnResetAll: document.getElementById('btn-reset-all'),
+  btnUndo: document.getElementById('btn-undo'),
+  btnRedo: document.getElementById('btn-redo'),
   btnExportSvg: document.getElementById('btn-export-svg'),
+  btnExportDxf: document.getElementById('btn-export-dxf'),
+  btnExportObj: document.getElementById('btn-export-obj'),
 
   inputRectilinear: document.getElementById('input-rectilinear'),
   valRectilinear: document.getElementById('val-rectilinear'),
@@ -137,6 +142,8 @@ const ui = {
 
   inputColorRoot: document.getElementById('input-color-root'),
   inputColorTip: document.getElementById('input-color-tip'),
+  toggleThickness: document.getElementById('toggle-thickness'),
+  groupThick: document.getElementById('group-thick'),
   inputThick: document.getElementById('input-thick'),
   valThick: document.getElementById('val-thick'),
   toggleAttractors: document.getElementById('toggle-attractors'),
@@ -179,6 +186,107 @@ function triggerLiveUpdate() {
   render();
   updateStats();
 }
+
+// --- Undo & Redo History System ---
+function serializeState() {
+  return {
+    shapes: sc.shapes.map((s) => ({
+      id: s.id,
+      type: s.type,
+      name: s.name,
+      x1: s.x1,
+      y1: s.y1,
+      x2: s.x2,
+      y2: s.y2,
+      cx: s.cx,
+      cy: s.cy,
+      radius: s.radius,
+      count: s.count,
+      hollow: s.hollow,
+      attractors: (s.attractors || []).map((a) => ({ x: a.x, y: a.y, id: a.id })),
+    })),
+    roots: sc.roots.map((r) => ({ id: r.id, x: r.x, y: r.y })),
+    manualPoints: sc.manualPoints.map((p) => ({ id: p.id, x: p.x, y: p.y })),
+    selectedShapeId: state.selectedShapeId,
+    showThickness: state.showThickness,
+  };
+}
+
+function restoreState(snapshot) {
+  if (!snapshot) return;
+  sc.shapes = snapshot.shapes.map((sd) => {
+    const s = new DrawnShape({
+      type: sd.type,
+      name: sd.name,
+      x1: sd.x1,
+      y1: sd.y1,
+      x2: sd.x2,
+      y2: sd.y2,
+      cx: sd.cx,
+      cy: sd.cy,
+      radius: sd.radius,
+      count: sd.count,
+      hollow: sd.hollow,
+    });
+    s.id = sd.id;
+    s.attractors = (sd.attractors || []).map((a) => ({ x: a.x, y: a.y, id: a.id }));
+    return s;
+  });
+
+  sc.roots = snapshot.roots.map((r) => ({ id: r.id, x: r.x, y: r.y }));
+  sc.manualPoints = snapshot.manualPoints.map((p) => ({ id: p.id, x: p.x, y: p.y }));
+  if (snapshot.showThickness !== undefined) {
+    state.showThickness = snapshot.showThickness;
+    if (ui.toggleThickness) ui.toggleThickness.checked = state.showThickness;
+    if (ui.groupThick) {
+      ui.groupThick.style.opacity = state.showThickness ? '1' : '0.45';
+      ui.groupThick.style.pointerEvents = state.showThickness ? 'auto' : 'none';
+    }
+  }
+  sc.rebuildAttractors();
+  selectShape(snapshot.selectedShapeId);
+  sc.resetTree();
+  triggerLiveUpdate();
+}
+
+const history = {
+  undoStack: [],
+  redoStack: [],
+  isApplying: false,
+
+  push() {
+    if (this.isApplying) return;
+    this.undoStack.push(serializeState());
+    if (this.undoStack.length > 40) this.undoStack.shift();
+    this.redoStack = [];
+    this.updateButtons();
+  },
+
+  undo() {
+    if (this.undoStack.length === 0) return;
+    this.isApplying = true;
+    this.redoStack.push(serializeState());
+    const prev = this.undoStack.pop();
+    restoreState(prev);
+    this.isApplying = false;
+    this.updateButtons();
+  },
+
+  redo() {
+    if (this.redoStack.length === 0) return;
+    this.isApplying = true;
+    this.undoStack.push(serializeState());
+    const next = this.redoStack.pop();
+    restoreState(next);
+    this.isApplying = false;
+    this.updateButtons();
+  },
+
+  updateButtons() {
+    if (ui.btnUndo) ui.btnUndo.disabled = this.undoStack.length === 0;
+    if (ui.btnRedo) ui.btnRedo.disabled = this.redoStack.length === 0;
+  },
+};
 
 // --- Active Drag / Interaction State ---
 let isInteracting = false;
@@ -325,7 +433,9 @@ function render() {
 
       const t = node.depth / maxDepth;
       ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
-      ctx.lineWidth = Math.max(1.2, node.thickness * state.thickScale * view.zoom);
+      ctx.lineWidth = state.showThickness
+        ? Math.max(1.2, node.thickness * state.thickScale * view.zoom)
+        : 1.0;
 
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
@@ -341,7 +451,9 @@ function render() {
         const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
 
         ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
-        ctx.lineWidth = Math.max(1.0, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * state.thickScale * 0.75 * view.zoom);
+        ctx.lineWidth = state.showThickness
+          ? Math.max(1.0, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * state.thickScale * 0.75 * view.zoom)
+          : 1.0;
 
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
@@ -532,6 +644,7 @@ canvas.addEventListener('pointerdown', (e) => {
     // A. Check root (if >1 roots)
     const hitRoot = sc.getRootNear(wPt.x, wPt.y, 16);
     if (hitRoot && sc.roots.length > 1) {
+      history.push();
       sc.removeRoot(hitRoot.id);
       triggerLiveUpdate();
       return;
@@ -539,12 +652,14 @@ canvas.addEventListener('pointerdown', (e) => {
     // B. Check attractor point
     const removedPt = sc.removeAttractorNear(wPt.x, wPt.y, 14);
     if (removedPt) {
+      history.push();
       triggerLiveUpdate();
       return;
     }
     // C. Check shape
     const hitShape = sc.shapes.find((s) => s.containsPoint(wPt.x, wPt.y));
     if (hitShape) {
+      history.push();
       sc.removeShape(hitShape.id);
       if (state.selectedShapeId === hitShape.id) selectShape(null);
       triggerLiveUpdate();
@@ -556,6 +671,7 @@ canvas.addEventListener('pointerdown', (e) => {
   // 2. Check if user clicked a Root Point to move it!
   const hitRoot = sc.getRootNear(wPt.x, wPt.y, 16);
   if (hitRoot && (state.activeTool === 'select' || state.activeTool === 'root')) {
+    history.push();
     dragAction = {
       type: 'move-root',
       rootId: hitRoot.id,
@@ -569,6 +685,7 @@ canvas.addEventListener('pointerdown', (e) => {
     if (activeShape) {
       const handle = activeShape.getHandleNear(wPt.x, wPt.y, 12 / view.zoom);
       if (handle) {
+        history.push();
         dragAction = {
           type: 'resize-shape',
           shape: activeShape,
@@ -581,6 +698,7 @@ canvas.addEventListener('pointerdown', (e) => {
     // Check if clicked inside any shape to select and move it
     const clickedShape = sc.shapes.find((s) => s.containsPoint(wPt.x, wPt.y));
     if (clickedShape) {
+      history.push();
       selectShape(clickedShape.id);
       dragAction = {
         type: 'move-shape',
@@ -597,9 +715,11 @@ canvas.addEventListener('pointerdown', (e) => {
 
   // 4. Click to place Point or add Root
   if (state.activeTool === 'point') {
+    history.push();
     sc.addPointAttractor(dragStart.wx, dragStart.wy);
     triggerLiveUpdate();
   } else if (state.activeTool === 'root') {
+    history.push();
     sc.addRoot(dragStart.wx, dragStart.wy);
     triggerLiveUpdate();
   }
@@ -712,6 +832,7 @@ window.addEventListener('pointerup', (e) => {
       y2 = dragStart.wy + 40;
     }
 
+    history.push();
     const newShape = new DrawnShape({
       type: 'rect',
       x1, y1, x2, y2,
@@ -725,6 +846,7 @@ window.addEventListener('pointerup', (e) => {
     let r = Math.hypot(wCoords.x - dragStart.wx, wCoords.y - dragStart.wy);
     if (dragDist <= 6) r = 50;
 
+    history.push();
     const newShape = new DrawnShape({
       type: 'circle',
       cx: dragStart.wx,
@@ -834,6 +956,7 @@ ui.toggleSelectedHollow.addEventListener('change', (e) => {
 ui.btnDeleteShape.addEventListener('click', () => {
   const shape = getSelectedShape();
   if (shape) {
+    history.push();
     sc.removeShape(shape.id);
     selectShape(null);
     triggerLiveUpdate();
@@ -846,6 +969,7 @@ ui.btnDeselectShape.addEventListener('click', () => {
 
 // --- General Controls ---
 ui.btnClearAttractors.addEventListener('click', () => {
+  history.push();
   toggleRunning(false);
   sc.clearAttractors();
   selectShape(null);
@@ -855,6 +979,7 @@ ui.btnClearAttractors.addEventListener('click', () => {
 });
 
 ui.btnSingleRoot.addEventListener('click', () => {
+  history.push();
   sc.setRoot(0, 0);
   triggerLiveUpdate();
 });
@@ -865,6 +990,7 @@ ui.btnStep.addEventListener('click', () => {
   doStep();
 });
 ui.btnResetAll.addEventListener('click', () => {
+  history.push();
   toggleRunning(false);
   sc.resetTree();
   render();
@@ -948,6 +1074,17 @@ ui.inputColorTip.addEventListener('input', (e) => {
   render();
 });
 
+if (ui.toggleThickness) {
+  ui.toggleThickness.addEventListener('change', (e) => {
+    state.showThickness = e.target.checked;
+    if (ui.groupThick) {
+      ui.groupThick.style.opacity = state.showThickness ? '1' : '0.45';
+      ui.groupThick.style.pointerEvents = state.showThickness ? 'auto' : 'none';
+    }
+    render();
+  });
+}
+
 ui.inputThick.addEventListener('input', (e) => {
   state.thickScale = parseFloat(e.target.value);
   ui.valThick.textContent = `${state.thickScale.toFixed(1)}x`;
@@ -959,16 +1096,104 @@ ui.toggleAttractors.addEventListener('change', (e) => {
   render();
 });
 
-// SVG Vector Exporter
-ui.btnExportSvg.addEventListener('click', () => {
-  const svgData = sc.exportToSVG(1600, 1000, state.colorRoot, state.colorTip);
-  const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `section_colonization_${sc.nodes.length}nodes.svg`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+// --- Exporters ---
+// 1. SVG Vector Exporter
+if (ui.btnExportSvg) {
+  ui.btnExportSvg.addEventListener('click', () => {
+    const svgData = sc.exportToSVG(1600, 1000, state.colorRoot, state.colorTip, state.showThickness);
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `section_colonization_${sc.nodes.length}nodes.svg`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+// 2. DXF Vector CAD Exporter (AutoCAD / Rhino)
+if (ui.btnExportDxf) {
+  ui.btnExportDxf.addEventListener('click', () => {
+    const dxfData = sc.exportToDXF();
+    const blob = new Blob([dxfData], { type: 'application/dxf;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `section_colonization_${sc.nodes.length}nodes.dxf`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+// 3. Rhino 3D Mesh (.OBJ) Exporter
+if (ui.btnExportObj) {
+  ui.btnExportObj.addEventListener('click', () => {
+    const objData = sc.exportToOBJ(8, state.thickScale);
+    const blob = new Blob([objData], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `section_colonization_rhino_${sc.nodes.length}nodes.obj`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+// --- Undo / Redo Controls & Keybindings ---
+if (ui.btnUndo) ui.btnUndo.addEventListener('click', () => history.undo());
+if (ui.btnRedo) ui.btnRedo.addEventListener('click', () => history.redo());
+
+window.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    if (e.shiftKey) {
+      e.preventDefault();
+      history.redo();
+    } else {
+      e.preventDefault();
+      history.undo();
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    history.redo();
+  }
 });
+
+// --- Editable Slider Bounds Integration ---
+function initSliderBounds() {
+  const boundInputs = document.querySelectorAll('.bound-input');
+  boundInputs.forEach((input) => {
+    const updateBound = () => {
+      const sliderId = input.getAttribute('data-slider-id');
+      const slider = document.getElementById(sliderId);
+      if (!slider) return;
+
+      const isMin = input.classList.contains('bound-min');
+      const val = parseFloat(input.value);
+      if (isNaN(val)) return;
+
+      if (isMin) {
+        slider.min = val;
+        if (parseFloat(slider.value) < val) {
+          slider.value = val;
+          slider.dispatchEvent(new Event('input'));
+        }
+      } else {
+        slider.max = val;
+        if (parseFloat(slider.value) > val) {
+          slider.value = val;
+          slider.dispatchEvent(new Event('input'));
+        }
+      }
+    };
+
+    input.addEventListener('change', updateBound);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        updateBound();
+        input.blur();
+      }
+    });
+  });
+}
 
 // --- Main Animation Frame Loop ---
 let lastStepTime = 0;
@@ -985,5 +1210,7 @@ function loop(time) {
 // Initial Boot
 resizeCanvas();
 selectShape(initialCanopy.id);
+initSliderBounds();
+history.updateButtons();
 updateStats();
 loop(0);

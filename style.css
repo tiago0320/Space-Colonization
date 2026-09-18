@@ -362,14 +362,19 @@ input:checked + .slider:before {
   transform: translateX(16px);
 }
 
-/* Bottom Stats and Camera HUD */
+/* Bottom Stats HUD - positioned bottom-right away from sidebar */
 #stats-hud {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  right: 20px;
   display: flex;
-  gap: 12px;
-  z-index: 10;
+  gap: 10px;
+  z-index: 15;
+  pointer-events: none;
+}
+
+#stats-hud .stat-pill {
+  pointer-events: auto;
 }
 
 .stat-pill {
@@ -554,5 +559,74 @@ input[type="color"]::-webkit-color-swatch {
   z-index: 20;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
+
+/* Editable Slider Bounds Row */
+.slider-bounds-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.slider-bounds-row input[type="range"] {
+  flex: 1;
+}
+
+.bound-input {
+  width: 44px;
+  min-width: 44px;
+  padding: 3px 4px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+  outline: none;
+  transition: all 0.15s;
+  -moz-appearance: textfield;
+}
+
+.bound-input::-webkit-outer-spin-button,
+.bound-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bound-input:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+}
+
+.bound-input:focus {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+/* Header Undo / Redo & Export Buttons */
+.btn-icon {
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.btn-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+}
+
+.btn-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 
 

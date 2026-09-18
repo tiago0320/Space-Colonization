@@ -34,12 +34,44 @@
     </div>
 
     <div class="header-actions">
-      <button id="btn-export-svg" class="btn btn-primary" title="Export 2D section as vector SVG for CAD / Illustrator / Rhino">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-        </svg>
-        Export SVG
-      </button>
+      <div class="btn-group-header">
+        <button id="btn-undo" class="btn btn-icon" title="Undo (Ctrl+Z)" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 2.83-6.36L3 13"/>
+          </svg>
+          Undo
+        </button>
+        <button id="btn-redo" class="btn btn-icon" title="Redo (Ctrl+Y)" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-2.83-6.36L21 13"/>
+          </svg>
+          Redo
+        </button>
+      </div>
+
+      <div style="width: 1px; height: 22px; background: var(--panel-border); margin: 0 2px;"></div>
+
+      <div class="btn-group-header">
+        <button id="btn-export-svg" class="btn" title="Export 2D section as vector SVG for Illustrator / Rhino">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          SVG
+        </button>
+        <button id="btn-export-dxf" class="btn" title="Export AutoCAD / Rhino DXF 2D section with layers">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/>
+          </svg>
+          DXF
+        </button>
+        <button id="btn-export-obj" class="btn btn-primary" title="Export 3D tubular mesh (.OBJ) to open directly in Rhino 3D">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          Rhino 3D Mesh
+        </button>
+      </div>
     </div>
   </header>
 
@@ -102,7 +134,11 @@
           <span>Attractors within this Shape</span>
           <span id="val-selected-count" class="control-val">150</span>
         </div>
-        <input id="input-selected-count" type="range" min="10" max="600" step="5" value="150">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-selected-count" value="10" title="Edit Min bound">
+          <input id="input-selected-count" type="range" min="10" max="600" step="5" value="150">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-selected-count" value="600" title="Edit Max bound">
+        </div>
         <span class="hint-badge">Adjust points in the selected shape live</span>
       </div>
 
@@ -161,7 +197,11 @@
           <span>Curvilinear / Rectilinear</span>
           <span id="val-rectilinear" class="control-val">0% (Organic)</span>
         </div>
-        <input id="input-rectilinear" type="range" min="0" max="1" step="0.05" value="0">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-rectilinear" value="0" step="0.1" title="Edit Min bound">
+          <input id="input-rectilinear" type="range" min="0" max="1" step="0.05" value="0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-rectilinear" value="1" step="0.1" title="Edit Max bound">
+        </div>
         <span class="hint-badge">0% = Organic Curves | 100% = Orthogonal 90° Grid</span>
       </div>
 
@@ -170,7 +210,11 @@
           <span>Curvilinear Inertia</span>
           <span id="val-smoothness" class="control-val">50%</span>
         </div>
-        <input id="input-smoothness" type="range" min="0" max="1" step="0.05" value="0.5">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-smoothness" value="0" step="0.1" title="Edit Min bound">
+          <input id="input-smoothness" type="range" min="0" max="1" step="0.05" value="0.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-smoothness" value="1" step="0.1" title="Edit Max bound">
+        </div>
         <span class="hint-badge">Momentum and smoothness of branching curve</span>
       </div>
 
@@ -188,7 +232,11 @@
           <span>Loop Density</span>
           <span id="val-loop-rate" class="control-val">50%</span>
         </div>
-        <input id="input-loop-rate" type="range" min="0.05" max="1.0" step="0.05" value="0.5">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-loop-rate" value="0.05" step="0.05" title="Edit Min bound">
+          <input id="input-loop-rate" type="range" min="0.05" max="1.0" step="0.05" value="0.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-loop-rate" value="1.0" step="0.05" title="Edit Max bound">
+        </div>
         <span class="hint-badge">Off = Open Dendritic Tree | On = Closed Reticulate Loops</span>
       </div>
     </div>
@@ -204,7 +252,11 @@
           <span>Influence Radius (Di)</span>
           <span id="val-influence" class="control-val">65px</span>
         </div>
-        <input id="input-influence" type="range" min="20" max="160" step="5" value="65">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-influence" value="20" step="5" title="Edit Min bound">
+          <input id="input-influence" type="range" min="20" max="160" step="5" value="65">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-influence" value="160" step="5" title="Edit Max bound">
+        </div>
       </div>
 
       <div class="control-group">
@@ -212,7 +264,11 @@
           <span>Kill Radius (Dk)</span>
           <span id="val-kill" class="control-val">12px</span>
         </div>
-        <input id="input-kill" type="range" min="4" max="40" step="1" value="12">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-kill" value="4" step="1" title="Edit Min bound">
+          <input id="input-kill" type="range" min="4" max="40" step="1" value="12">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-kill" value="40" step="1" title="Edit Max bound">
+        </div>
       </div>
 
       <div class="control-group">
@@ -220,7 +276,11 @@
           <span>Segment Length (Step)</span>
           <span id="val-segment" class="control-val">8px</span>
         </div>
-        <input id="input-segment" type="range" min="3" max="25" step="1" value="8">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-segment" value="3" step="1" title="Edit Min bound">
+          <input id="input-segment" type="range" min="3" max="25" step="1" value="8">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-segment" value="25" step="1" title="Edit Max bound">
+        </div>
       </div>
 
       <div class="control-group">
@@ -228,7 +288,11 @@
           <span>Vertical Tropism</span>
           <span id="val-tropism" class="control-val">-0.25 (Upward)</span>
         </div>
-        <input id="input-tropism" type="range" min="-0.8" max="0.8" step="0.05" value="-0.25">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-tropism" value="-0.8" step="0.05" title="Edit Min bound">
+          <input id="input-tropism" type="range" min="-0.8" max="0.8" step="0.05" value="-0.25">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-tropism" value="0.8" step="0.05" title="Edit Max bound">
+        </div>
         <span class="hint-badge">Negative = Upward vertical structural bias</span>
       </div>
     </div>
@@ -250,15 +314,27 @@
         </div>
       </div>
 
-      <div class="control-group" style="margin-top: 6px;">
+      <div class="toggle-row" style="margin-top: 6px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Branch Thickness</span>
+        <label class="switch">
+          <input id="toggle-thickness" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control-group" id="group-thick" style="margin-top: 6px;">
         <div class="control-label-row">
           <span>Branch Caliber</span>
           <span id="val-thick" class="control-val">1.2x</span>
         </div>
-        <input id="input-thick" type="range" min="0.4" max="3.0" step="0.1" value="1.2">
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-thick" value="0.4" step="0.1" title="Edit Min bound">
+          <input id="input-thick" type="range" min="0.4" max="3.0" step="0.1" value="1.2">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-thick" value="3.0" step="0.1" title="Edit Max bound">
+        </div>
       </div>
 
-      <div class="toggle-row">
+      <div class="toggle-row" style="margin-top: 6px;">
         <span style="font-size: 12px; color: #cbd5e1;">Show Attractors</span>
         <label class="switch">
           <input id="toggle-attractors" type="checkbox" checked>

@@ -565,7 +565,7 @@ export class SpaceColonization2D {
   }
 
   // Export 2D Section as clean SVG CAD vector format
-  exportToSVG(width = 1200, height = 800, colorRoot = '#0ea5e9', colorTip = '#f43f5e') {
+  exportToSVG(width = 1200, height = 800, colorRoot = '#0ea5e9', colorTip = '#f43f5e', showThickness = true) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const n of this.nodes) {
       if (n.x < minX) minX = n.x;
@@ -588,7 +588,7 @@ export class SpaceColonization2D {
     for (const node of this.nodes) {
       if (node.parent) {
         const t = node.depth / maxDepth;
-        const strokeW = Math.max(1.0, node.thickness * 0.85).toFixed(2);
+        const strokeW = showThickness ? Math.max(1.0, node.thickness * 0.85).toFixed(2) : '1.0';
         svg += `  <line x1="${node.parent.x.toFixed(2)}" y1="${node.parent.y.toFixed(2)}" x2="${node.x.toFixed(2)}" y2="${node.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.9"/>\n`;
       }
     }
@@ -597,7 +597,7 @@ export class SpaceColonization2D {
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
         const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
-        const strokeW = Math.max(0.8, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.7).toFixed(2);
+        const strokeW = showThickness ? Math.max(0.8, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.7).toFixed(2) : '1.0';
         svg += `  <line x1="${edge.nodeA.x.toFixed(2)}" y1="${edge.nodeA.y.toFixed(2)}" x2="${edge.nodeB.x.toFixed(2)}" y2="${edge.nodeB.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.85"/>\n`;
       }
     }
@@ -605,4 +605,183 @@ export class SpaceColonization2D {
     svg += `</g>\n</svg>`;
     return svg;
   }
+
+  // Export 2D Section as AutoCAD / Rhino DXF vector drawing with dedicated layers
+  exportToDXF() {
+    let dxf = '0\nSECTION\n2\nHEADER\n0\nENDSEC\n';
+    dxf += '0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n4\n';
+
+    // Layer definitions (Color: 3 = Green/Cyan, 4 = Cyan, 1 = Red, 7 = White)
+    dxf += '0\nLAYER\n2\nTREE_BRANCHES\n70\n0\n62\n3\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nANASTOMOSIS_LOOPS\n70\n0\n62\n4\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nROOTS\n70\n0\n62\n1\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nBOUNDARY_SHAPES\n70\n0\n62\n7\n6\nCONTINUOUS\n';
+    dxf += '0\nENDTAB\n0\nENDSEC\n';
+
+    dxf += '0\nSECTION\n2\nENTITIES\n';
+
+    // 1. Primary branches
+    for (const node of this.nodes) {
+      if (node.parent) {
+        // Section coordinates: in CAD Y is positive upwards, so invert Y (-node.y)
+        const x1 = node.parent.x.toFixed(3);
+        const y1 = (-node.parent.y).toFixed(3);
+        const x2 = node.x.toFixed(3);
+        const y2 = (-node.y).toFixed(3);
+
+        dxf += '0\nLINE\n8\nTREE_BRANCHES\n';
+        dxf += `10\n${x1}\n20\n${y1}\n30\n0.0\n`;
+        dxf += `11\n${x2}\n20\n${y2}\n30\n0.0\n`;
+      }
+    }
+
+    // 2. Closed loops
+    if (this.closedVenation && this.anastomosisEdges.length > 0) {
+      for (const edge of this.anastomosisEdges) {
+        const x1 = edge.nodeA.x.toFixed(3);
+        const y1 = (-edge.nodeA.y).toFixed(3);
+        const x2 = edge.nodeB.x.toFixed(3);
+        const y2 = (-edge.nodeB.y).toFixed(3);
+
+        dxf += '0\nLINE\n8\nANASTOMOSIS_LOOPS\n';
+        dxf += `10\n${x1}\n20\n${y1}\n30\n0.0\n`;
+        dxf += `11\n${x2}\n20\n${y2}\n30\n0.0\n`;
+      }
+    }
+
+    // 3. Roots
+    for (const root of this.roots) {
+      dxf += '0\nCIRCLE\n8\nROOTS\n';
+      dxf += `10\n${root.x.toFixed(3)}\n20\n${(-root.y).toFixed(3)}\n30\n0.0\n`;
+      dxf += '40\n6.0\n';
+    }
+
+    // 4. Boundary shapes
+    for (const s of this.shapes) {
+      if (s.type === 'rect') {
+        const minX = Math.min(s.x1, s.x2).toFixed(3);
+        const maxX = Math.max(s.x1, s.x2).toFixed(3);
+        const minY = (-Math.max(s.y1, s.y2)).toFixed(3);
+        const maxY = (-Math.min(s.y1, s.y2)).toFixed(3);
+
+        const corners = [
+          [minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY], [minX, minY]
+        ];
+        for (let i = 0; i < 4; i++) {
+          dxf += '0\nLINE\n8\nBOUNDARY_SHAPES\n';
+          dxf += `10\n${corners[i][0]}\n20\n${corners[i][1]}\n30\n0.0\n`;
+          dxf += `11\n${corners[i+1][0]}\n20\n${corners[i+1][1]}\n30\n0.0\n`;
+        }
+      } else if (s.type === 'circle') {
+        dxf += '0\nCIRCLE\n8\nBOUNDARY_SHAPES\n';
+        dxf += `10\n${s.cx.toFixed(3)}\n20\n${(-s.cy).toFixed(3)}\n30\n0.0\n`;
+        dxf += `40\n${s.radius.toFixed(3)}\n`;
+      }
+    }
+
+    dxf += '0\nENDSEC\n0\nEOF\n';
+    return dxf;
+  }
+
+  // Export 3D Tubular Polygonal Mesh (Wavefront .OBJ) ready for direct Rhino 3D import / SubD
+  exportToOBJ(radialSegments = 8, caliberMultiplier = 1.0) {
+    const vertices = [];
+    const faces = [];
+
+    const addCylinder = (p1, p2, r1, r2) => {
+      const dx = p2.x - p1.x;
+      const dy = -(p2.y - p1.y); // Invert Y for Rhino architectural section
+      const len = Math.hypot(dx, dy);
+      if (len < 0.001) return;
+
+      const ux = dx / len;
+      const uy = dy / len;
+
+      // Normal perpendicular to branch direction in the section plane (XY)
+      const nx = -uy;
+      const ny = ux;
+
+      // Binormal in Z (depth out of page)
+      const bz = 1;
+
+      const baseIdx = vertices.length + 1; // OBJ is 1-indexed
+
+      // Create ring at p1
+      const p1x = p1.x;
+      const p1y = -p1.y;
+      const p1z = 0;
+
+      for (let i = 0; i < radialSegments; i++) {
+        const theta = (2 * Math.PI * i) / radialSegments;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        const vx = p1x + r1 * (cosT * nx);
+        const vy = p1y + r1 * (cosT * ny);
+        const vz = p1z + r1 * (sinT * bz);
+        vertices.push([vx.toFixed(3), vy.toFixed(3), vz.toFixed(3)]);
+      }
+
+      // Create ring at p2
+      const p2x = p2.x;
+      const p2y = -p2.y;
+      const p2z = 0;
+
+      for (let i = 0; i < radialSegments; i++) {
+        const theta = (2 * Math.PI * i) / radialSegments;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        const vx = p2x + r2 * (cosT * nx);
+        const vy = p2y + r2 * (cosT * ny);
+        const vz = p2z + r2 * (sinT * bz);
+        vertices.push([vx.toFixed(3), vy.toFixed(3), vz.toFixed(3)]);
+      }
+
+      // Create quad faces connecting Ring 1 to Ring 2
+      for (let i = 0; i < radialSegments; i++) {
+        const next = (i + 1) % radialSegments;
+        const v1 = baseIdx + i;
+        const v2 = baseIdx + next;
+        const v3 = baseIdx + radialSegments + next;
+        const v4 = baseIdx + radialSegments + i;
+        faces.push([v1, v2, v3, v4]);
+      }
+    };
+
+    // 1. Build tubes for all primary branches
+    for (const node of this.nodes) {
+      if (node.parent) {
+        const rParent = Math.max(0.75, (node.parent.thickness || 1.0) * caliberMultiplier * 0.7);
+        const rChild = Math.max(0.5, (node.thickness || 1.0) * caliberMultiplier * 0.7);
+        addCylinder(node.parent, node, rParent, rChild);
+      }
+    }
+
+    // 2. Build tubes for all closed venation anastomosis loops
+    if (this.closedVenation && this.anastomosisEdges.length > 0) {
+      for (const edge of this.anastomosisEdges) {
+        const rLoop = Math.max(0.4, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * caliberMultiplier * 0.5);
+        addCylinder(edge.nodeA, edge.nodeB, rLoop, rLoop);
+      }
+    }
+
+    // Compose OBJ text
+    let obj = '# Space Colonization 3D Architectural Section Mesh for Rhino\n';
+    obj += '# Units: Millimeters / Standard CAD Units\n';
+    obj += `o Space_Colonization_Mesh_${this.nodes.length}nodes\n\n`;
+
+    for (let i = 0; i < vertices.length; i++) {
+      obj += `v ${vertices[i][0]} ${vertices[i][1]} ${vertices[i][2]}\n`;
+    }
+    obj += '\n';
+
+    for (let i = 0; i < faces.length; i++) {
+      const f = faces[i];
+      obj += `f ${f[0]} ${f[1]} ${f[2]} ${f[3]}\n`;
+    }
+
+    return obj;
+  }
 }
+
