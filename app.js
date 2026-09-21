@@ -686,7 +686,7 @@ function render() {
       if (!node.parent) continue;
 
       // Filter out secondary and/or tertiary branches if toggled off
-      if (!state.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+      if (!state.keepSecondary && node.branchOrder === 2) continue;
       if (!state.keepTertiary && node.branchOrder === 3) continue;
 
       const p1 = worldToScreen(node.parent.x, node.parent.y);
@@ -718,7 +718,7 @@ function render() {
     // 6b. Draw Closed Venation Anastomosis Loops
     if (sc.closedVenation && sc.anastomosisEdges.length > 0) {
       for (const edge of sc.anastomosisEdges) {
-        if (!state.keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!state.keepSecondary && edge.order === 2) continue;
         if (!state.keepTertiary && edge.order === 3) continue;
 
         const p1 = worldToScreen(edge.nodeA.x, edge.nodeA.y);
@@ -1259,7 +1259,7 @@ function checkBranchHover(clientX, clientY, wCoords) {
     if (!node.parent) continue;
 
     // Filter out hidden branch orders
-    if (!activeState.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+    if (!activeState.keepSecondary && node.branchOrder === 2) continue;
     if (!activeState.keepTertiary && node.branchOrder === 3) continue;
 
     const p1x = node.parent.x;
@@ -1840,7 +1840,7 @@ function renderSketchMode(w, h) {
       if (!node.parent) continue;
 
       // Filter out secondary and/or tertiary branches if toggled off
-      if (!sketchState.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+      if (!sketchState.keepSecondary && node.branchOrder === 2) continue;
       if (!sketchState.keepTertiary && node.branchOrder === 3) continue;
 
       const p1 = worldToScreen(node.parent.x, node.parent.y);
@@ -1870,7 +1870,7 @@ function renderSketchMode(w, h) {
     // 6b. Draw Closed Venation Anastomosis Loops
     if (sketchSC.closedVenation && sketchSC.anastomosisEdges && sketchSC.anastomosisEdges.length > 0) {
       for (const edge of sketchSC.anastomosisEdges) {
-        if (!sketchState.keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!sketchState.keepSecondary && edge.order === 2) continue;
         if (!sketchState.keepTertiary && edge.order === 3) continue;
 
         const p1 = worldToScreen(edge.nodeA.x, edge.nodeA.y);

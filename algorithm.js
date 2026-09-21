@@ -781,7 +781,7 @@ export class SpaceColonization2D {
 
     const shouldInclude = (node) => {
       if (!node.parent) return true;
-      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepSecondary && node.branchOrder === 2) return false;
       if (!keepTertiary && node.branchOrder === 3) return false;
       return true;
     };
@@ -824,7 +824,7 @@ export class SpaceColonization2D {
     // Closed venation anastomosis loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
-        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepSecondary && edge.order === 2) continue;
         if (!keepTertiary && edge.order === 3) continue;
 
         const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
@@ -850,7 +850,7 @@ export class SpaceColonization2D {
 
     const shouldInclude = (node) => {
       if (!node.parent) return true;
-      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepSecondary && node.branchOrder === 2) return false;
       if (!keepTertiary && node.branchOrder === 3) return false;
       return true;
     };
@@ -890,7 +890,7 @@ export class SpaceColonization2D {
     // 2. Closed loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
-        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepSecondary && edge.order === 2) continue;
         if (!keepTertiary && edge.order === 3) continue;
 
         const x1 = edge.nodeA.x.toFixed(3);
@@ -945,7 +945,7 @@ export class SpaceColonization2D {
 
     const shouldInclude = (node) => {
       if (!node.parent) return true;
-      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepSecondary && node.branchOrder === 2) return false;
       if (!keepTertiary && node.branchOrder === 3) return false;
       return true;
     };
@@ -1026,7 +1026,7 @@ export class SpaceColonization2D {
     // 2. Build tubes for closed venation anastomosis loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
-        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepSecondary && edge.order === 2) continue;
         if (!keepTertiary && edge.order === 3) continue;
 
         const rLoop = Math.max(0.4, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * caliberMultiplier * 0.5);
