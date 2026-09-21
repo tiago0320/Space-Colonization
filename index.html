@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Space Colonization</title>
+  <title>Space-Colonization</title>
   <meta name="description" content="2D Architectural Section Space Colonization tool for manual shape drawing, custom root placement, and curvilinear/rectilinear branching.">
   
   <!-- Modern Typography -->
@@ -24,14 +24,29 @@
   <!-- Top Bar -->
   <header id="top-bar" class="glass-panel">
     <div class="brand">
-      <div class="brand-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
+      <img src="logo.png" alt="lsA NEXUS" class="brand-logo" id="app-logo">
+      <div class="brand-text-wrap">
+        <span class="brand-title">Space Colonization</span>
+        <span class="brand-tag" id="app-subtitle-tag">Section 2D Morphology</span>
       </div>
-      <span class="brand-title">Space Colonization</span>
-      <span class="brand-tag">Section 2D Morphology</span>
     </div>
+
+    <!-- Studio Mode Switcher -->
+    <nav class="studio-mode-switcher" id="studio-mode-switcher" aria-label="Studio Mode">
+      <button id="tab-section-mode" class="mode-tab active" title="2D Section Studio (Draw Shapes & Growth)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        <span>Section Studio</span>
+      </button>
+      <button id="tab-sketch-mode" class="mode-tab" title="Sketch & Void Studio (Image Analysis & Spatial Variations)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <span>Sketch & Void Studio</span>
+        <span class="badge-pill">NEW</span>
+      </button>
+    </nav>
 
     <div class="header-actions">
       <div class="btn-group-header">
@@ -52,17 +67,23 @@
       <div style="width: 1px; height: 22px; background: var(--panel-border); margin: 0 2px;"></div>
 
       <div class="btn-group-header">
-        <button id="btn-export-svg" class="btn" title="Export 2D section as vector SVG for Illustrator / Rhino">
+        <button id="btn-export-svg" class="btn" title="Export as vector SVG for Illustrator / Rhino">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
           SVG
         </button>
-        <button id="btn-export-dxf" class="btn" title="Export AutoCAD / Rhino DXF 2D section with layers">
+        <button id="btn-export-dxf" class="btn" title="Export AutoCAD / Rhino DXF vector drawing with layers">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/>
           </svg>
           DXF
+        </button>
+        <button id="btn-export-png" class="btn" title="Export high-resolution Blueprint PNG image">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+          PNG
         </button>
         <button id="btn-export-obj" class="btn btn-primary" title="Export 3D tubular mesh (.OBJ) to open directly in Rhino 3D">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -121,9 +142,9 @@
     </div>
 
     <!-- Active / Selected Shape Editor -->
-    <div class="section" id="section-selected-shape" style="background: rgba(56, 189, 248, 0.08); padding: 12px; border-radius: var(--radius-sm); border: 1px solid rgba(56, 189, 248, 0.3);">
+    <div class="section" id="section-selected-shape" style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.2);">
       <div class="section-header" style="border-bottom: none; padding-bottom: 0;">
-        <span class="section-title" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
+        <span class="section-title" style="color: #ffffff; display: flex; align-items: center; gap: 6px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
           <span id="label-selected-shape">Selected Shape: None</span>
         </span>
@@ -131,13 +152,16 @@
 
       <div class="control-group" style="margin-top: 6px;">
         <div class="control-label-row">
-          <span>Attractors within this Shape</span>
-          <span id="val-selected-count" class="control-val">150</span>
+          <span>Attractors within Shape</span>
+          <div class="val-input-group">
+            <input id="num-selected-count" type="number" class="val-input" data-slider-id="input-selected-count" value="150" step="any" title="Type exact value">
+            <span class="val-unit">pts</span>
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-selected-count" value="10" title="Edit Min bound">
-          <input id="input-selected-count" type="range" min="10" max="600" step="5" value="150">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-selected-count" value="600" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-selected-count" value="10" step="any" title="Edit Min bound">
+          <input id="input-selected-count" type="range" min="10" max="600" step="any" value="150">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-selected-count" value="600" step="any" title="Edit Max bound">
         </div>
         <span class="hint-badge">Adjust points in the selected shape live</span>
       </div>
@@ -194,26 +218,30 @@
 
       <div class="control-group">
         <div class="control-label-row">
-          <span>Curvilinear / Rectilinear</span>
-          <span id="val-rectilinear" class="control-val">0% (Organic)</span>
+          <span>Curvilinear / Rectilinear <span id="val-rectilinear" class="hint-inline">(Organic)</span></span>
+          <div class="val-input-group">
+            <input id="num-rectilinear" type="number" class="val-input" data-slider-id="input-rectilinear" value="0" step="any" min="0" max="1" title="Type exact value (0 to 1)">
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-rectilinear" value="0" step="0.1" title="Edit Min bound">
-          <input id="input-rectilinear" type="range" min="0" max="1" step="0.05" value="0">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-rectilinear" value="1" step="0.1" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-rectilinear" value="0" step="any" title="Edit Min bound">
+          <input id="input-rectilinear" type="range" min="0" max="1" step="any" value="0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-rectilinear" value="1" step="any" title="Edit Max bound">
         </div>
-        <span class="hint-badge">0% = Organic Curves | 100% = Orthogonal 90° Grid</span>
+        <span class="hint-badge">0 = Organic Curves | 1 = Orthogonal 90° Grid</span>
       </div>
 
       <div class="control-group">
         <div class="control-label-row">
-          <span>Curvilinear Inertia</span>
-          <span id="val-smoothness" class="control-val">50%</span>
+          <span>Curvilinear Inertia <span id="val-smoothness" class="hint-inline">(50%)</span></span>
+          <div class="val-input-group">
+            <input id="num-smoothness" type="number" class="val-input" data-slider-id="input-smoothness" value="0.5" step="any" min="0" max="1" title="Type exact value (0 to 1)">
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-smoothness" value="0" step="0.1" title="Edit Min bound">
-          <input id="input-smoothness" type="range" min="0" max="1" step="0.05" value="0.5">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-smoothness" value="1" step="0.1" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-smoothness" value="0" step="any" title="Edit Min bound">
+          <input id="input-smoothness" type="range" min="0" max="1" step="any" value="0.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-smoothness" value="1" step="any" title="Edit Max bound">
         </div>
         <span class="hint-badge">Momentum and smoothness of branching curve</span>
       </div>
@@ -229,13 +257,15 @@
 
       <div class="control-group" id="group-loop-rate" style="margin-top: 4px;">
         <div class="control-label-row">
-          <span>Loop Density</span>
-          <span id="val-loop-rate" class="control-val">50%</span>
+          <span>Loop Density <span id="val-loop-rate" class="hint-inline">(50%)</span></span>
+          <div class="val-input-group">
+            <input id="num-loop-rate" type="number" class="val-input" data-slider-id="input-loop-rate" value="0.5" step="any" min="0.05" max="1" title="Type exact value (0.05 to 1)">
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-loop-rate" value="0.05" step="0.05" title="Edit Min bound">
-          <input id="input-loop-rate" type="range" min="0.05" max="1.0" step="0.05" value="0.5">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-loop-rate" value="1.0" step="0.05" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-loop-rate" value="0.05" step="any" title="Edit Min bound">
+          <input id="input-loop-rate" type="range" min="0.05" max="1.0" step="any" value="0.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-loop-rate" value="1.0" step="any" title="Edit Max bound">
         </div>
         <span class="hint-badge">Off = Open Dendritic Tree | On = Closed Reticulate Loops</span>
       </div>
@@ -250,99 +280,660 @@
       <div class="control-group">
         <div class="control-label-row">
           <span>Influence Radius (Di)</span>
-          <span id="val-influence" class="control-val">65px</span>
+          <div class="val-input-group">
+            <input id="num-influence" type="number" class="val-input" data-slider-id="input-influence" value="65" step="any" title="Type exact value">
+            <span class="val-unit">px</span>
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-influence" value="20" step="5" title="Edit Min bound">
-          <input id="input-influence" type="range" min="20" max="160" step="5" value="65">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-influence" value="160" step="5" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-influence" value="20" step="any" title="Edit Min bound">
+          <input id="input-influence" type="range" min="20" max="160" step="any" value="65">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-influence" value="160" step="any" title="Edit Max bound">
         </div>
       </div>
 
       <div class="control-group">
         <div class="control-label-row">
           <span>Kill Radius (Dk)</span>
-          <span id="val-kill" class="control-val">12px</span>
+          <div class="val-input-group">
+            <input id="num-kill" type="number" class="val-input" data-slider-id="input-kill" value="12" step="any" title="Type exact value">
+            <span class="val-unit">px</span>
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-kill" value="4" step="1" title="Edit Min bound">
-          <input id="input-kill" type="range" min="4" max="40" step="1" value="12">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-kill" value="40" step="1" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-kill" value="4" step="any" title="Edit Min bound">
+          <input id="input-kill" type="range" min="4" max="40" step="any" value="12">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-kill" value="40" step="any" title="Edit Max bound">
         </div>
       </div>
 
       <div class="control-group">
         <div class="control-label-row">
           <span>Segment Length (Step)</span>
-          <span id="val-segment" class="control-val">8px</span>
+          <div class="val-input-group">
+            <input id="num-segment" type="number" class="val-input" data-slider-id="input-segment" value="8" step="any" title="Type exact value">
+            <span class="val-unit">px</span>
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-segment" value="3" step="1" title="Edit Min bound">
-          <input id="input-segment" type="range" min="3" max="25" step="1" value="8">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-segment" value="25" step="1" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-segment" value="3" step="any" title="Edit Min bound">
+          <input id="input-segment" type="range" min="3" max="25" step="any" value="8">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-segment" value="25" step="any" title="Edit Max bound">
         </div>
       </div>
 
       <div class="control-group">
         <div class="control-label-row">
-          <span>Vertical Tropism</span>
-          <span id="val-tropism" class="control-val">-0.25 (Upward)</span>
+          <span>Vertical Tropism <span id="val-tropism" class="hint-inline">(Upward)</span></span>
+          <div class="val-input-group">
+            <input id="num-tropism" type="number" class="val-input" data-slider-id="input-tropism" value="-0.25" step="any" title="Type exact value">
+          </div>
         </div>
         <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-tropism" value="-0.8" step="0.05" title="Edit Min bound">
-          <input id="input-tropism" type="range" min="-0.8" max="0.8" step="0.05" value="-0.25">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-tropism" value="0.8" step="0.05" title="Edit Max bound">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-tropism" value="-0.8" step="any" title="Edit Min bound">
+          <input id="input-tropism" type="range" min="-0.8" max="0.8" step="any" value="-0.25">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-tropism" value="0.8" step="any" title="Edit Max bound">
         </div>
         <span class="hint-badge">Negative = Upward vertical structural bias</span>
       </div>
     </div>
 
-    <!-- Color Gradient & Shading -->
+    <!-- Branch & Line Geometry -->
     <div class="section">
       <div class="section-header">
-        <span class="section-title">Color Gradient</span>
+        <span class="section-title">Branch & Line Thickness</span>
       </div>
 
       <div class="color-picker-group">
         <div class="color-item">
           <span>Root Color</span>
-          <input id="input-color-root" type="color" value="#0ea5e9">
+          <input id="input-color-root" type="color" value="#ffffff">
         </div>
         <div class="color-item">
           <span>Tip Color</span>
-          <input id="input-color-tip" type="color" value="#f43f5e">
+          <input id="input-color-tip" type="color" value="#a1a1aa">
         </div>
       </div>
 
+      <!-- Line Thickness (Active in both Uniform and Tapered modes) -->
+      <div class="control-group" id="group-thick" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Line Thickness</span>
+          <div class="val-input-group">
+            <input id="num-thick" type="number" class="val-input" data-slider-id="input-thick" value="1.5" step="any" title="Type exact line thickness">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-thick" value="0.5" step="any" title="Edit Min bound">
+          <input id="input-thick" type="range" min="0.5" max="8.0" step="any" value="1.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-thick" value="8.0" step="any" title="Edit Max bound">
+        </div>
+        <span class="hint-badge">Line width for final simulation (controls uniform lines when taper is off)</span>
+      </div>
+
       <div class="toggle-row" style="margin-top: 6px;">
-        <span style="font-size: 12px; color: #cbd5e1;">Branch Thickness</span>
+        <span style="font-size: 12px; color: #cbd5e1;">Taper Branches (Murray's Law)</span>
         <label class="switch">
-          <input id="toggle-thickness" type="checkbox" checked>
+          <input id="toggle-thickness" type="checkbox">
           <span class="slider"></span>
         </label>
       </div>
+    </div>
 
-      <div class="control-group" id="group-thick" style="margin-top: 6px;">
-        <div class="control-label-row">
-          <span>Branch Caliber</span>
-          <span id="val-thick" class="control-val">1.2x</span>
-        </div>
-        <div class="slider-bounds-row">
-          <input type="number" class="bound-input bound-min" data-slider-id="input-thick" value="0.4" step="0.1" title="Edit Min bound">
-          <input id="input-thick" type="range" min="0.4" max="3.0" step="0.1" value="1.2">
-          <input type="number" class="bound-input bound-max" data-slider-id="input-thick" value="3.0" step="0.1" title="Edit Max bound">
-        </div>
+    <!-- Attractor Points Styling -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Attractor Points Styling</span>
       </div>
 
-      <div class="toggle-row" style="margin-top: 6px;">
+      <div class="toggle-row">
         <span style="font-size: 12px; color: #cbd5e1;">Show Attractors</span>
         <label class="switch">
           <input id="toggle-attractors" type="checkbox" checked>
           <span class="slider"></span>
         </label>
       </div>
+
+      <div class="color-picker-group" style="margin-top: 4px;">
+        <div class="color-item" style="grid-column: span 2;">
+          <span>Attractor Color</span>
+          <input id="input-color-attractor" type="color" value="#ffffff">
+        </div>
+      </div>
+
+      <div class="control-group" id="group-attractor-size" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Point Size (Radius)</span>
+          <div class="val-input-group">
+            <input id="num-attractor-size" type="number" class="val-input" data-slider-id="input-attractor-size" value="2.0" step="any" title="Type exact attractor size">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-attractor-size" value="0.5" step="any" title="Edit Min bound">
+          <input id="input-attractor-size" type="range" min="0.5" max="8.0" step="any" value="2.0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-attractor-size" value="8.0" step="any" title="Edit Max bound">
+        </div>
+        <span class="hint-badge">Display radius of attractor points</span>
+      </div>
     </div>
   </aside>
+
+  <!-- Sidebar Controls Drawer for Sketch & Void Studio -->
+  <aside id="sidebar-sketch" class="glass-panel studio-panel" data-mode="sketch" style="display: none;">
+    <!-- 1. Sketch & Image Input -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Image Input & Idea Presets</span>
+      </div>
+
+      <!-- Drag & Drop Upload Zone -->
+      <div id="dropzone" class="dropzone" title="Drag & drop sketch image here or click to browse">
+        <input type="file" id="input-image-file" accept="image/png, image/jpeg, image/webp, image/svg+xml" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropzone-icon">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+        </svg>
+        <span class="dropzone-text">Drop sketch here or <span class="dropzone-browse">Browse</span></span>
+        <span class="dropzone-sub">PNG, JPG, WebP, SVG</span>
+      </div>
+
+      <!-- Architectural Idea Presets -->
+      <div class="control-group" style="margin-top: 4px;">
+        <span class="control-label-row" style="font-size: 11px; color: var(--text-muted);">Quick Architectural Presets:</span>
+        <div class="btn-group-grid" style="gap: 6px;">
+          <button id="btn-preset-courtyard" class="btn btn-preset active" data-preset="courtyard" title="Courtyard Floor Plan with exterior/interior walls">
+            Courtyard Plan
+          </button>
+          <button id="btn-preset-urban" class="btn btn-preset" data-preset="urban" title="Dense Urban Blocks & Street Alleys">
+            Urban Blocks
+          </button>
+          <button id="btn-preset-atrium" class="btn btn-preset" data-preset="atrium" title="Massing with Carved Atrium Voids">
+            Atrium Mass
+          </button>
+          <button id="btn-preset-cavern" class="btn btn-preset" data-preset="cavern" title="Organic Cavernous Spatial Pockets">
+            Cavern Pockets
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive In-App Quick Doodle -->
+      <div class="btn-group-grid" style="margin-top: 6px;">
+        <button id="btn-toggle-doodle" class="btn btn-accent" style="grid-column: span 2;" title="Draw black solid walls or erase void rooms directly on the canvas">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/>
+          </svg>
+          <span id="label-btn-doodle">Canvas Doodle Brush</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Solid vs Void Image Analysis -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Solid vs Void Segmentation</span>
+      </div>
+
+      <!-- Threshold Slider -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Luminance Threshold</span>
+          <div class="val-input-group">
+            <input id="num-sketch-thresh" type="number" class="val-input" data-slider-id="input-sketch-thresh" value="128" step="1" min="0" max="255" title="Type threshold (0-255)">
+            <button id="btn-auto-otsu" class="btn btn-sm" style="padding: 2px 7px; font-size: 10px;" title="Compute optimal Otsu threshold">Auto</button>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-thresh" value="10" step="1" title="Min bound">
+          <input id="input-sketch-thresh" type="range" min="10" max="245" step="1" value="128">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-thresh" value="245" step="1" title="Max bound">
+        </div>
+        <span class="hint-badge">Separates dark ink / solid mass from white paper / open void</span>
+      </div>
+
+      <!-- Invert Solid/Void -->
+      <div class="toggle-row" style="margin-top: 4px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Invert (Dark = Void, Light = Solid)</span>
+        <label class="switch">
+          <input id="toggle-sketch-invert" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Target Domain: Colonize Voids vs Colonize Solids -->
+      <div class="control-group" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Target Colonization Domain</span>
+        </div>
+        <div class="segmented-control">
+          <button id="target-mode-void" class="segment-btn active" data-target="void" title="Colonize rooms, circulation, courtyards, and open space">
+            Voids (Rooms / Circulation)
+          </button>
+          <button id="target-mode-solid" class="segment-btn" data-target="solid" title="Infiltrate solid walls and massing with structural ribs">
+            Solids (Structure / Columns)
+          </button>
+        </div>
+      </div>
+
+      <!-- Visual Layer Toggles -->
+      <div class="control-group" style="margin-top: 6px;">
+        <div class="control-label-row">
+          <span>Source Image Opacity</span>
+          <div class="val-input-group">
+            <input id="num-sketch-img-opacity" type="number" class="val-input" data-slider-id="input-sketch-img-opacity" value="0.4" step="0.05" min="0" max="1" title="Image Opacity">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-img-opacity" value="0" step="any">
+          <input id="input-sketch-img-opacity" type="range" min="0" max="1" step="0.05" value="0.4">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-img-opacity" value="1" step="any">
+        </div>
+      </div>
+
+      <div class="toggle-row" style="margin-top: 4px;">
+        <span style="font-size: 11px; color: #cbd5e1;">Show Architectural Solid Hatch</span>
+        <label class="switch">
+          <input id="toggle-sketch-mask" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row" style="margin-top: 4px;">
+        <span style="font-size: 11px; color: #cbd5e1;">Show Attractor Points</span>
+        <label class="switch">
+          <input id="toggle-sketch-attractors" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 3. Attractor Sampling & Distribution -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Attractor Controls</span>
+      </div>
+
+      <!-- Attractor Count Slider -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Number of Attractors</span>
+          <div class="val-input-group">
+            <input id="num-sketch-attractors" type="number" class="val-input" data-slider-id="input-sketch-attractors" value="650" step="any" min="50" max="3000">
+            <span class="val-unit">pts</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-attractors" value="50" step="any">
+          <input id="input-sketch-attractors" type="range" min="50" max="2500" step="any" value="650">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-attractors" value="2500" step="any">
+        </div>
+        <span class="hint-badge">Attractors strictly confined inside detected solid or void boundaries</span>
+      </div>
+
+      <!-- Perimeter Wall Bias Slider -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Perimeter Wall Bias</span>
+          <div class="val-input-group">
+            <input id="num-sketch-boundary-bias" type="number" class="val-input" data-slider-id="input-sketch-boundary-bias" value="0.25" step="any" min="0" max="1">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-boundary-bias" value="0" step="any">
+          <input id="input-sketch-boundary-bias" type="range" min="0" max="1" step="any" value="0.25">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-boundary-bias" value="1" step="any">
+        </div>
+        <span class="hint-badge">0 = Uniform void scatter | 1 = Cling tightly to room wall perimeter</span>
+      </div>
+
+      <!-- Attractor Point Size -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Point Size (Radius)</span>
+          <div class="val-input-group">
+            <input id="num-sketch-attractor-size" type="number" class="val-input" data-slider-id="input-sketch-attractor-size" value="2.0" step="any" min="0.5" max="8.0">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-attractor-size" value="0.5" step="any">
+          <input id="input-sketch-attractor-size" type="range" min="0.5" max="8.0" step="any" value="2.0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-attractor-size" value="8.0" step="any">
+        </div>
+      </div>
+
+      <!-- Attractor Color Picker -->
+      <div class="color-picker-group" style="margin-top: 2px;">
+        <div class="color-item" style="grid-column: span 2;">
+          <span>Attractor Point Color</span>
+          <input id="input-sketch-attractor-color" type="color" value="#ffffff">
+        </div>
+      </div>
+
+      <button id="btn-sketch-resample-attractors" class="btn" style="width: 100%; margin-top: 4px; font-size: 11px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        Resample Attractor Seed Points
+      </button>
+    </div>
+
+    <!-- 4. Growth & Space Colonization Parameters -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Growth Parameters</span>
+      </div>
+
+      <!-- Influence Radius -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Influence Radius (Di)</span>
+          <div class="val-input-group">
+            <input id="num-sketch-influence" type="number" class="val-input" data-slider-id="input-sketch-influence" value="75" step="any">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-influence" value="15" step="any">
+          <input id="input-sketch-influence" type="range" min="15" max="180" step="any" value="75">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-influence" value="180" step="any">
+        </div>
+        <span class="hint-badge">Search distance for nodes to sense attractors across voids</span>
+      </div>
+
+      <!-- Kill Radius -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Kill Radius (Dk)</span>
+          <div class="val-input-group">
+            <input id="num-sketch-kill" type="number" class="val-input" data-slider-id="input-sketch-kill" value="12" step="any">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-kill" value="4" step="any">
+          <input id="input-sketch-kill" type="range" min="4" max="45" step="any" value="12">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-kill" value="45" step="any">
+        </div>
+        <span class="hint-badge">Distance at which attractors are reached and consumed</span>
+      </div>
+
+      <!-- Segment Length -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Segment Length (Step)</span>
+          <div class="val-input-group">
+            <input id="num-sketch-segment" type="number" class="val-input" data-slider-id="input-sketch-segment" value="9" step="any">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-segment" value="3" step="any">
+          <input id="input-sketch-segment" type="range" min="3" max="25" step="any" value="9">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-segment" value="25" step="any">
+        </div>
+        <span class="hint-badge">Branch growth increment per cycle</span>
+      </div>
+
+      <!-- Vertical Tropism -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Vertical Tropism <span id="val-sketch-tropism-y" class="hint-inline">(-0.15)</span></span>
+          <div class="val-input-group">
+            <input id="num-sketch-tropism-y" type="number" class="val-input" data-slider-id="input-sketch-tropism-y" value="-0.15" step="any">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-tropism-y" value="-0.8" step="any">
+          <input id="input-sketch-tropism-y" type="range" min="-0.8" max="0.8" step="any" value="-0.15">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-tropism-y" value="0.8" step="any">
+        </div>
+        <span class="hint-badge">Negative = Upward vertical structural/light bias</span>
+      </div>
+
+      <!-- Horizontal Tropism -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Horizontal Tropism <span id="val-sketch-tropism-x" class="hint-inline">(0.0)</span></span>
+          <div class="val-input-group">
+            <input id="num-sketch-tropism-x" type="number" class="val-input" data-slider-id="input-sketch-tropism-x" value="0.0" step="any">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-tropism-x" value="-0.8" step="any">
+          <input id="input-sketch-tropism-x" type="range" min="-0.8" max="0.8" step="any" value="0.0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-tropism-x" value="0.8" step="any">
+        </div>
+        <span class="hint-badge">Left/right directional ventilation or circulation bias</span>
+      </div>
+    </div>
+
+    <!-- 5. Curvature & Spatial Morphology -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Curvature & Morphology</span>
+      </div>
+
+      <!-- Curvilinear vs Rectilinear Snap -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Curvilinear / Rectilinear <span id="val-sketch-rectilinear" class="hint-inline">(Organic)</span></span>
+          <div class="val-input-group">
+            <input id="num-sketch-rectilinear" type="number" class="val-input" data-slider-id="input-sketch-rectilinear" value="0.0" step="any" min="0" max="1">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-rectilinear" value="0" step="any">
+          <input id="input-sketch-rectilinear" type="range" min="0" max="1" step="any" value="0.0">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-rectilinear" value="1" step="any">
+        </div>
+        <span class="hint-badge">0 = Organic Curves | 1 = Strict Orthogonal 90° Grid</span>
+      </div>
+
+      <!-- Curvilinear Inertia / Smoothness -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Curvilinear Smoothness</span>
+          <div class="val-input-group">
+            <input id="num-sketch-smoothness" type="number" class="val-input" data-slider-id="input-sketch-smoothness" value="0.65" step="any" min="0" max="1">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-smoothness" value="0" step="any">
+          <input id="input-sketch-smoothness" type="range" min="0" max="1" step="any" value="0.65">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-smoothness" value="1" step="any">
+        </div>
+        <span class="hint-badge">Branch inertia and flow momentum</span>
+      </div>
+
+      <!-- Closed Venation Loops -->
+      <div class="toggle-row" style="margin-top: 4px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Closed Venation (Loops)</span>
+        <label class="switch">
+          <input id="toggle-sketch-closed-venation" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Loop Density -->
+      <div class="control-group" id="group-sketch-loop-rate" style="margin-top: 4px;">
+        <div class="control-label-row">
+          <span>Loop Density (Anastomosis)</span>
+          <div class="val-input-group">
+            <input id="num-sketch-loop-rate" type="number" class="val-input" data-slider-id="input-sketch-loop-rate" value="0.5" step="any" min="0.05" max="1">
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-loop-rate" value="0.05" step="any">
+          <input id="input-sketch-loop-rate" type="range" min="0.05" max="1.0" step="any" value="0.5">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-loop-rate" value="1.0" step="any">
+        </div>
+        <span class="hint-badge">Forms closed ring pathways around courtyards & rooms</span>
+      </div>
+    </div>
+
+    <!-- 6. Branch Caliber & Geometry Styling -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Branch Geometry & Caliber</span>
+      </div>
+
+      <!-- Line Thickness -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Line Thickness</span>
+          <div class="val-input-group">
+            <input id="num-sketch-thick" type="number" class="val-input" data-slider-id="input-sketch-thick" value="1.8" step="any" min="0.5" max="10.0">
+            <span class="val-unit">px</span>
+          </div>
+        </div>
+        <div class="slider-bounds-row">
+          <input type="number" class="bound-input bound-min" data-slider-id="input-sketch-thick" value="0.5" step="any">
+          <input id="input-sketch-thick" type="range" min="0.5" max="8.0" step="any" value="1.8">
+          <input type="number" class="bound-input bound-max" data-slider-id="input-sketch-thick" value="8.0" step="any">
+        </div>
+      </div>
+
+      <!-- Taper Branches Murray's Law -->
+      <div class="toggle-row" style="margin-top: 4px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Taper Branches (Murray's Law)</span>
+        <label class="switch">
+          <input id="toggle-sketch-thickness" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Color Pickers -->
+      <div class="color-picker-group" style="margin-top: 4px;">
+        <div class="color-item">
+          <span>Root Color</span>
+          <input id="input-sketch-color-root" type="color" value="#ffffff">
+        </div>
+        <div class="color-item">
+          <span>Tip Color</span>
+          <input id="input-sketch-color-tip" type="color" value="#a1a1aa">
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Root Seeding Strategy -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Root Seeding Strategy</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span>Seeding Mode</span>
+        </div>
+        <select id="select-root-strategy">
+          <option value="portals">Entrance Portals (Perimeter Openings)</option>
+          <option value="centroids">Chamber Centroids (Center of Each Room)</option>
+          <option value="multi-chamber">Multi-Chamber Distributed Roots</option>
+          <option value="custom">Custom Manual Roots</option>
+        </select>
+      </div>
+
+      <div class="btn-group-grid" style="margin-top: 6px;">
+        <button id="tool-sketch-root" class="tool-btn" style="grid-column: span 2;" title="Click anywhere on the plan to place a new root starting point">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2v20M5 12h14"/><circle cx="12" cy="12" r="6"/></svg>
+          <span>+ Add Root Point (Click Canvas)</span>
+        </button>
+      </div>
+
+      <button id="btn-sketch-reset-roots" class="btn" style="width: 100%; margin-top: 4px; font-size: 11px;" title="Reset roots to primary entrance">
+        Reset to Single Entrance Root
+      </button>
+    </div>
+
+    <!-- 8. Interactive Simulation & Variations -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Simulation Controls</span>
+      </div>
+
+      <div class="btn-group-grid">
+        <button id="btn-sketch-play" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Play
+        </button>
+        <button id="btn-sketch-step" class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          Step
+        </button>
+      </div>
+      <button id="btn-sketch-reset" class="btn" style="width: 100%;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Reset Growth
+      </button>
+
+      <!-- Batch Variations Generator Button -->
+      <button id="btn-generate-variations" class="btn btn-accent" style="width: 100%; margin-top: 10px; padding: 11px 16px; font-weight: 600; font-size: 13px; box-shadow: 0 4px 18px rgba(255,255,255,0.18);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Generate 6 Spatial Variations
+      </button>
+
+      <button id="btn-toggle-drawer" class="btn" style="width: 100%; font-size: 11px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/>
+        </svg>
+        <span id="label-toggle-drawer">Open Variations Matrix</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- In-Canvas Quick Doodle Floating Toolbar -->
+  <div id="doodle-toolbar" class="glass-panel" style="display: none;">
+    <div class="doodle-tools-group">
+      <span class="doodle-title">Plan Doodle</span>
+      <button id="doodle-mode-ink" class="btn btn-sm btn-primary" title="Draw solid black walls">Ink (Solid)</button>
+      <button id="doodle-mode-erase" class="btn btn-sm" title="Erase solid to carve void rooms">Eraser (Void)</button>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 10px; color: var(--text-muted);">Size:</span>
+        <input id="input-doodle-size" type="range" min="4" max="48" value="16" style="width: 70px;">
+      </div>
+      <button id="btn-doodle-clear" class="btn btn-sm" title="Clear doodle canvas">Clear</button>
+      <button id="btn-doodle-close" class="btn btn-sm btn-icon" title="Exit doodle mode">✕</button>
+    </div>
+  </div>
+
+  <!-- Variations Matrix Drawer (Collapsible bottom gallery) -->
+  <section id="variations-drawer" class="glass-panel" style="display: none;">
+    <div class="variations-header">
+      <div class="variations-title-wrap">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="variations-title">Spatial Variations Matrix</span>
+          <span class="badge-pill">6 Typologies</span>
+        </div>
+        <span class="variations-subtitle">Algorithmic 2D spatial layouts generated from solid vs. void branching colonization</span>
+      </div>
+      <div class="variations-actions">
+        <button id="btn-regenerate-all" class="btn btn-accent" title="Rerun batch simulations with current thresholds">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Regenerate All
+        </button>
+        <button id="btn-close-drawer" class="btn btn-icon" title="Close Drawer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Variations Grid Cards -->
+    <div class="variations-grid" id="variations-grid">
+      <!-- 6 variation cards will be rendered dynamically here -->
+    </div>
+  </section>
 
   <!-- Bottom Stats HUD -->
   <div id="stats-hud">
