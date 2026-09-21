@@ -5,11 +5,13 @@ Space-Colonization is an interactive generative design and architectural section
 ## Features
 
 - **Space Colonization Engine**: Simulates generative branching based on attractor point distribution, customizable influence distance, kill radius, and tropism bias.
+- **Branch Hierarchy & Pruning**: Classifies branching networks into Primary (dominant trunks), Secondary, and Tertiary branches using dominant-flow stream analysis. Selectively keep or remove secondary and tertiary branches in both Section Studio and Sketch & Void Studio.
+- **Visual Hierarchy Identification**: Color-code branch orders with custom palette pickers (Primary, Secondary, Tertiary), real-time segment counter HUDs, and interactive cursor hover badges displaying branch order, depth, and caliper.
 - **Curvilinear & Rectilinear Morphology**: Dynamically adjust branch smoothness or enforce orthogonal rectilinear snapping for architectural section layouts.
 - **Closed Venation & Anastomosis**: Generate secondary interconnecting loops between branches to model structural cross-bracing and spatial circulation networks.
 - **Raster Sketch Analyzer**: Upload sketches or conceptual diagrams to automatically extract solid vs. void regions and generate attractor fields.
 - **Procedural Variation Engine**: Explore automated morphological variations across multiple seed distributions and parameter configurations.
-- **Multi-Format CAD/3D Export**: Export simulations directly to Scalable Vector Graphics (SVG), AutoCAD DXF line drawings, or Rhino 3D wavefront OBJ quad cylinder meshes.
+- **Multi-Format CAD/3D Export**: Export simulations directly to Scalable Vector Graphics (SVG), AutoCAD DXF line drawings (with dedicated layers per branch order), or Rhino 3D wavefront OBJ quad cylinder meshes with hierarchy filtering.
 
 ## Getting Started
 

@@ -8,6 +8,7 @@ export class TreeNode2D {
     this.depth = depth;
     this.thickness = 1.0;
     this.descendantCount = 1;
+    this.branchOrder = 1; // 1 = Primary (Main Branch), 2 = Secondary, 3 = Tertiary
 
     // Per-step accumulator
     this.accumX = 0;
@@ -200,6 +201,8 @@ export class SpaceColonization2D {
     this.anastomosisEdges = []; // Array of { nodeA, nodeB } for closed loop cycles
     this.iterations = 0;
     this.isFinished = false;
+    this.stagnantSteps = 0;
+    this.maxIterations = options.maxIterations || 220;
   }
 
   clear() {
@@ -213,6 +216,7 @@ export class SpaceColonization2D {
     this.anastomosisEdges = [];
     this.iterations = 0;
     this.isFinished = false;
+    this.stagnantSteps = 0;
   }
 
   clearAttractors() {
@@ -221,6 +225,7 @@ export class SpaceColonization2D {
     this.attractors = [];
     this.anastomosisEdges = [];
     this.isFinished = false;
+    this.stagnantSteps = 0;
   }
 
   resetTree() {
@@ -229,6 +234,7 @@ export class SpaceColonization2D {
     this.anastomosisEdges = [];
     this.iterations = 0;
     this.isFinished = false;
+    this.stagnantSteps = 0;
 
     // Create starting node for every root point
     for (const r of this.roots) {
@@ -365,6 +371,7 @@ export class SpaceColonization2D {
       if (!active) break;
       stepCount++;
     }
+    this.isFinished = true;
     if (this.closedVenation) {
       this.updateClosedVenation();
     }
@@ -372,7 +379,7 @@ export class SpaceColonization2D {
   }
 
   step() {
-    if (this.attractors.length === 0 || this.nodes.length === 0) {
+    if (this.isFinished || this.attractors.length === 0 || this.nodes.length === 0 || this.iterations >= this.maxIterations) {
       this.isFinished = true;
       return false;
     }
@@ -414,11 +421,19 @@ export class SpaceColonization2D {
 
       // Check influence radius
       if (closestNode && minDistanceSq <= inflDistSq) {
-        const dist = Math.sqrt(minDistanceSq);
-        if (dist > 0.0001) {
-          closestNode.accumX += (attr.x - closestNode.x) / dist;
-          closestNode.accumY += (attr.y - closestNode.y) / dist;
-          closestNode.influenceCount++;
+        // In boundary/grid mode, verify visibility (not blocked by a solid wall)
+        let canInfluence = true;
+        if (this.boundaryGrid) {
+          canInfluence = this.boundaryGrid.isRayClear(closestNode.x, closestNode.y, attr.x, attr.y, this.targetMode);
+        }
+
+        if (canInfluence) {
+          const dist = Math.sqrt(minDistanceSq);
+          if (dist > 0.0001) {
+            closestNode.accumX += (attr.x - closestNode.x) / dist;
+            closestNode.accumY += (attr.y - closestNode.y) / dist;
+            closestNode.influenceCount++;
+          }
         }
       }
 
@@ -429,11 +444,15 @@ export class SpaceColonization2D {
 
     // 3. Grow branches from influenced nodes
     let newNodesCreated = 0;
+    let isTrunkStep = false;
     const nodeCount = this.nodes.length;
+    let totalInfluenced = 0;
+    const newChildren = [];
 
     for (let i = 0; i < nodeCount; i++) {
       const node = this.nodes[i];
       if (node.influenceCount > 0) {
+        totalInfluenced++;
         let dirX = node.accumX / node.influenceCount;
         let dirY = node.accumY / node.influenceCount;
 
@@ -505,8 +524,87 @@ export class SpaceColonization2D {
         const child = new TreeNode2D(childX, childY, node, node.depth + 1);
         node.children.push(child);
         this.nodes.push(child);
+        newChildren.push({ parent: node, child });
         newNodesCreated++;
       }
+    }
+
+    // Trunk growth: If no node is within influenceRadius of any attractor,
+    // grow the tree node closest to the attractor field towards its nearest attractor
+    if (totalInfluenced === 0 && this.attractors.length > 0) {
+      isTrunkStep = true;
+      let bestNode = null;
+      let targetAttr = null;
+      let closestDistSq = Infinity;
+
+      for (let i = 0; i < this.attractors.length; i++) {
+        const attr = this.attractors[i];
+        for (let j = 0; j < this.nodes.length; j++) {
+          const node = this.nodes[j];
+          const dSq = (attr.x - node.x) ** 2 + (attr.y - node.y) ** 2;
+          if (dSq < closestDistSq) {
+            closestDistSq = dSq;
+            bestNode = node;
+            targetAttr = attr;
+          }
+        }
+      }
+
+      if (bestNode && targetAttr) {
+        let dirX = targetAttr.x - bestNode.x;
+        let dirY = targetAttr.y - bestNode.y;
+        dirX += this.tropismX;
+        dirY += this.tropismY;
+        const len = Math.hypot(dirX, dirY);
+        if (len > 0.0001) {
+          dirX /= len;
+          dirY /= len;
+          const childX = bestNode.x + dirX * this.segmentLength;
+          const childY = bestNode.y + dirY * this.segmentLength;
+
+          let isClear = true;
+          if (this.boundaryGrid) {
+            isClear = this.boundaryGrid.isRayClear(bestNode.x, bestNode.y, childX, childY, this.targetMode);
+          }
+
+          if (isClear) {
+            const child = new TreeNode2D(childX, childY, bestNode, bestNode.depth + 1);
+            bestNode.children.push(child);
+            this.nodes.push(child);
+            newChildren.push({ parent: bestNode, child });
+            newNodesCreated++;
+          }
+        }
+      }
+    }
+
+    // Segment Kill Check: Kill any attractors that the newly grown segments passed through/near
+    if (newChildren.length > 0 && this.attractors.length > 0) {
+      const survivors = [];
+      for (const attr of this.attractors) {
+        let eaten = false;
+        for (const seg of newChildren) {
+          const px = attr.x, py = attr.y;
+          const x1 = seg.parent.x, y1 = seg.parent.y;
+          const x2 = seg.child.x, y2 = seg.child.y;
+          const dx = x2 - x1, dy = y2 - y1;
+          const lenSq = dx * dx + dy * dy;
+          let dSq;
+          if (lenSq === 0) {
+            dSq = (px - x1) ** 2 + (py - y1) ** 2;
+          } else {
+            let t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+            dSq = (px - (x1 + t * dx)) ** 2 + (py - (y1 + t * dy)) ** 2;
+          }
+          if (dSq <= killDistSq) {
+            eaten = true;
+            killed++;
+            break;
+          }
+        }
+        if (!eaten) survivors.push(attr);
+      }
+      this.attractors = survivors;
     }
 
     this.iterations++;
@@ -519,7 +617,15 @@ export class SpaceColonization2D {
       }
     }
 
-    if (this.attractors.length === 0 || newNodesCreated === 0) {
+    // Stagnation Tracking
+    if (killed > 0) {
+      this.stagnantSteps = 0;
+    } else if (!isTrunkStep && newNodesCreated > 0) {
+      this.stagnantSteps++;
+    }
+
+    // Clean termination: all attractors eaten, no nodes can grow, or 8 consecutive stagnant steps
+    if (this.attractors.length === 0 || newNodesCreated === 0 || this.stagnantSteps >= 8) {
       this.isFinished = true;
       return false;
     }
@@ -544,6 +650,80 @@ export class SpaceColonization2D {
       const node = this.nodes[i];
       node.thickness = baseThick * Math.pow(node.descendantCount, 0.44);
     }
+
+    this.updateBranchHierarchy();
+  }
+
+  updateBranchHierarchy() {
+    if (this.nodes.length === 0) return;
+
+    for (let i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].branchOrder = 1;
+    }
+
+    // Traverse starting from root nodes (nodes with parent === null)
+    const rootNodes = this.nodes.filter((n) => !n.parent);
+    for (const root of rootNodes) {
+      root.branchOrder = 1; // Primary (Main Branch)
+      this._classifySubtree(root, 1);
+    }
+
+    // Update hierarchy order for closed venation anastomosis loops
+    if (this.anastomosisEdges && this.anastomosisEdges.length > 0) {
+      for (const edge of this.anastomosisEdges) {
+        edge.order = Math.max(edge.nodeA.branchOrder || 1, edge.nodeB.branchOrder || 1);
+      }
+    }
+  }
+
+  _classifySubtree(node, currentOrder) {
+    if (!node.children || node.children.length === 0) return;
+
+    // Find the main continuation child with largest descendantCount
+    let mainChild = node.children[0];
+    let maxDescendants = mainChild.descendantCount || 0;
+    for (let i = 1; i < node.children.length; i++) {
+      const c = node.children[i];
+      if ((c.descendantCount || 0) > maxDescendants) {
+        maxDescendants = c.descendantCount || 0;
+        mainChild = c;
+      }
+    }
+
+    for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      if (child === mainChild) {
+        // Main flow continues the parent's branch order
+        child.branchOrder = currentOrder;
+        this._classifySubtree(child, currentOrder);
+      } else {
+        // Lateral fork:
+        // If parent was Primary (1), lateral fork starts Secondary (2).
+        // If parent was Secondary (2) or Tertiary (3), lateral fork starts Tertiary (3).
+        const nextOrder = currentOrder === 1 ? 2 : 3;
+        child.branchOrder = nextOrder;
+        this._classifySubtree(child, nextOrder);
+      }
+    }
+  }
+
+  getBranchCounts() {
+    let primary = 0;
+    let secondary = 0;
+    let tertiary = 0;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      if (!node.parent) continue; // Count branching segments
+      if (node.branchOrder === 1) primary++;
+      else if (node.branchOrder === 2) secondary++;
+      else if (node.branchOrder === 3) tertiary++;
+    }
+    return {
+      primary,
+      secondary,
+      tertiary,
+      total: primary + secondary + tertiary,
+    };
   }
 
   updateClosedVenation() {
@@ -591,14 +771,30 @@ export class SpaceColonization2D {
   }
 
   // Export 2D Section as clean SVG CAD vector format
-  exportToSVG(width = 1200, height = 800, colorRoot = '#0ea5e9', colorTip = '#f43f5e', showThickness = true) {
+  exportToSVG(width = 1200, height = 800, colorRoot = '#0ea5e9', colorTip = '#f43f5e', showThickness = true, options = {}) {
+    const keepSecondary = options.keepSecondary !== undefined ? options.keepSecondary : true;
+    const keepTertiary = options.keepTertiary !== undefined ? options.keepTertiary : true;
+    const identifyHierarchy = options.identifyHierarchy || false;
+    const colorPrimary = options.colorPrimary || '#38bdf8';
+    const colorSecondary = options.colorSecondary || '#34d399';
+    const colorTertiary = options.colorTertiary || '#fbbf24';
+
+    const shouldInclude = (node) => {
+      if (!node.parent) return true;
+      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepTertiary && node.branchOrder === 3) return false;
+      return true;
+    };
+
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const n of this.nodes) {
+      if (!shouldInclude(n)) continue;
       if (n.x < minX) minX = n.x;
       if (n.x > maxX) maxX = n.x;
       if (n.y < minY) minY = n.y;
       if (n.y > maxY) maxY = n.y;
     }
+    if (!isFinite(minX)) { minX = -100; maxX = 100; minY = -100; maxY = 100; }
     const pad = 40;
     minX -= pad; maxX += pad; minY -= pad; maxY += pad;
     const viewW = maxX - minX;
@@ -610,21 +806,36 @@ export class SpaceColonization2D {
     let maxDepth = 1;
     for (const n of this.nodes) if (n.depth > maxDepth) maxDepth = n.depth;
 
-    // Primary hierarchical branches
+    // Branches with hierarchy filtering and styling
     for (const node of this.nodes) {
-      if (node.parent) {
+      if (node.parent && shouldInclude(node)) {
         const t = node.depth / maxDepth;
         const strokeW = showThickness ? Math.max(1.0, node.thickness * 0.85).toFixed(2) : '1.0';
-        svg += `  <line x1="${node.parent.x.toFixed(2)}" y1="${node.parent.y.toFixed(2)}" x2="${node.x.toFixed(2)}" y2="${node.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.9"/>\n`;
+        let strokeColor = t > 0.5 ? colorTip : colorRoot;
+        if (identifyHierarchy) {
+          if (node.branchOrder === 1) strokeColor = colorPrimary;
+          else if (node.branchOrder === 2) strokeColor = colorSecondary;
+          else strokeColor = colorTertiary;
+        }
+        svg += `  <line x1="${node.parent.x.toFixed(2)}" y1="${node.parent.y.toFixed(2)}" x2="${node.x.toFixed(2)}" y2="${node.y.toFixed(2)}" stroke="${strokeColor}" stroke-width="${strokeW}" opacity="0.9" data-order="${node.branchOrder || 1}"/>\n`;
       }
     }
 
     // Closed venation anastomosis loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
+        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepTertiary && edge.order === 3) continue;
+
         const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
         const strokeW = showThickness ? Math.max(0.8, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.7).toFixed(2) : '1.0';
-        svg += `  <line x1="${edge.nodeA.x.toFixed(2)}" y1="${edge.nodeA.y.toFixed(2)}" x2="${edge.nodeB.x.toFixed(2)}" y2="${edge.nodeB.y.toFixed(2)}" stroke="${t > 0.5 ? colorTip : colorRoot}" stroke-width="${strokeW}" opacity="0.85"/>\n`;
+        let strokeColor = t > 0.5 ? colorTip : colorRoot;
+        if (identifyHierarchy) {
+          if (edge.order === 1) strokeColor = colorPrimary;
+          else if (edge.order === 2) strokeColor = colorSecondary;
+          else strokeColor = colorTertiary;
+        }
+        svg += `  <line x1="${edge.nodeA.x.toFixed(2)}" y1="${edge.nodeA.y.toFixed(2)}" x2="${edge.nodeB.x.toFixed(2)}" y2="${edge.nodeB.y.toFixed(2)}" stroke="${strokeColor}" stroke-width="${strokeW}" opacity="0.85" data-order="${edge.order || 1}"/>\n`;
       }
     }
 
@@ -633,29 +844,44 @@ export class SpaceColonization2D {
   }
 
   // Export 2D Section as AutoCAD / Rhino DXF vector drawing with dedicated layers
-  exportToDXF() {
-    let dxf = '0\nSECTION\n2\nHEADER\n0\nENDSEC\n';
-    dxf += '0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n4\n';
+  exportToDXF(options = {}) {
+    const keepSecondary = options.keepSecondary !== undefined ? options.keepSecondary : true;
+    const keepTertiary = options.keepTertiary !== undefined ? options.keepTertiary : true;
 
-    // Layer definitions (Color: 3 = Green/Cyan, 4 = Cyan, 1 = Red, 7 = White)
-    dxf += '0\nLAYER\n2\nTREE_BRANCHES\n70\n0\n62\n3\n6\nCONTINUOUS\n';
-    dxf += '0\nLAYER\n2\nANASTOMOSIS_LOOPS\n70\n0\n62\n4\n6\nCONTINUOUS\n';
+    const shouldInclude = (node) => {
+      if (!node.parent) return true;
+      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepTertiary && node.branchOrder === 3) return false;
+      return true;
+    };
+
+    let dxf = '0\nSECTION\n2\nHEADER\n0\nENDSEC\n';
+    dxf += '0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n6\n';
+
+    // Layer definitions with branch order layers
+    dxf += '0\nLAYER\n2\nTREE_BRANCHES_PRIMARY\n70\n0\n62\n7\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nTREE_BRANCHES_SECONDARY\n70\n0\n62\n4\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nTREE_BRANCHES_TERTIARY\n70\n0\n62\n2\n6\nCONTINUOUS\n';
+    dxf += '0\nLAYER\n2\nANASTOMOSIS_LOOPS\n70\n0\n62\n3\n6\nCONTINUOUS\n';
     dxf += '0\nLAYER\n2\nROOTS\n70\n0\n62\n1\n6\nCONTINUOUS\n';
     dxf += '0\nLAYER\n2\nBOUNDARY_SHAPES\n70\n0\n62\n7\n6\nCONTINUOUS\n';
     dxf += '0\nENDTAB\n0\nENDSEC\n';
 
     dxf += '0\nSECTION\n2\nENTITIES\n';
 
-    // 1. Primary branches
+    // 1. Branches segmented by hierarchy layer
     for (const node of this.nodes) {
-      if (node.parent) {
-        // Section coordinates: in CAD Y is positive upwards, so invert Y (-node.y)
+      if (node.parent && shouldInclude(node)) {
         const x1 = node.parent.x.toFixed(3);
         const y1 = (-node.parent.y).toFixed(3);
         const x2 = node.x.toFixed(3);
         const y2 = (-node.y).toFixed(3);
 
-        dxf += '0\nLINE\n8\nTREE_BRANCHES\n';
+        let layerName = 'TREE_BRANCHES_PRIMARY';
+        if (node.branchOrder === 2) layerName = 'TREE_BRANCHES_SECONDARY';
+        else if (node.branchOrder === 3) layerName = 'TREE_BRANCHES_TERTIARY';
+
+        dxf += '0\nLINE\n8\n' + layerName + '\n';
         dxf += `10\n${x1}\n20\n${y1}\n30\n0.0\n`;
         dxf += `11\n${x2}\n20\n${y2}\n30\n0.0\n`;
       }
@@ -664,6 +890,9 @@ export class SpaceColonization2D {
     // 2. Closed loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
+        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepTertiary && edge.order === 3) continue;
+
         const x1 = edge.nodeA.x.toFixed(3);
         const y1 = (-edge.nodeA.y).toFixed(3);
         const x2 = edge.nodeB.x.toFixed(3);
@@ -710,7 +939,17 @@ export class SpaceColonization2D {
   }
 
   // Export 3D Tubular Polygonal Mesh (Wavefront .OBJ) ready for direct Rhino 3D import / SubD
-  exportToOBJ(radialSegments = 8, caliberMultiplier = 1.0) {
+  exportToOBJ(radialSegments = 8, caliberMultiplier = 1.0, options = {}) {
+    const keepSecondary = options.keepSecondary !== undefined ? options.keepSecondary : true;
+    const keepTertiary = options.keepTertiary !== undefined ? options.keepTertiary : true;
+
+    const shouldInclude = (node) => {
+      if (!node.parent) return true;
+      if (!keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) return false;
+      if (!keepTertiary && node.branchOrder === 3) return false;
+      return true;
+    };
+
     const vertices = [];
     const faces = [];
 
@@ -775,18 +1014,21 @@ export class SpaceColonization2D {
       }
     };
 
-    // 1. Build tubes for all primary branches
+    // 1. Build tubes for branches respecting hierarchy filtering
     for (const node of this.nodes) {
-      if (node.parent) {
+      if (node.parent && shouldInclude(node)) {
         const rParent = Math.max(0.75, (node.parent.thickness || 1.0) * caliberMultiplier * 0.7);
         const rChild = Math.max(0.5, (node.thickness || 1.0) * caliberMultiplier * 0.7);
         addCylinder(node.parent, node, rParent, rChild);
       }
     }
 
-    // 2. Build tubes for all closed venation anastomosis loops
+    // 2. Build tubes for closed venation anastomosis loops
     if (this.closedVenation && this.anastomosisEdges.length > 0) {
       for (const edge of this.anastomosisEdges) {
+        if (!keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!keepTertiary && edge.order === 3) continue;
+
         const rLoop = Math.max(0.4, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * caliberMultiplier * 0.5);
         addCylinder(edge.nodeA, edge.nodeB, rLoop, rLoop);
       }

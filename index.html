@@ -19,6 +19,7 @@
   <div id="viewport-container">
     <canvas id="canvas2d"></canvas>
     <div id="draw-dim-badge">0 x 0</div>
+    <div id="hierarchy-hover-badge" class="hierarchy-hover-badge"></div>
   </div>
 
   <!-- Top Bar -->
@@ -378,6 +379,74 @@
           <input id="toggle-thickness" type="checkbox">
           <span class="slider"></span>
         </label>
+      </div>
+    </div>
+
+    <!-- Branch Hierarchy & Pruning -->
+    <div class="section" id="section-branch-hierarchy">
+      <div class="section-header">
+        <span class="section-title">Branch Hierarchy & Pruning</span>
+      </div>
+
+      <!-- Live Segment Hierarchy Counter Pill -->
+      <div class="hierarchy-legend-row" id="section-hierarchy-legend">
+        <div class="hierarchy-pill" title="Primary (Main Branch)">
+          <span class="hierarchy-dot primary"></span>
+          <span>Pri:</span>
+          <span id="stat-count-primary" class="hierarchy-count">0</span>
+        </div>
+        <div class="hierarchy-pill" title="Secondary Branches">
+          <span class="hierarchy-dot secondary"></span>
+          <span>Sec:</span>
+          <span id="stat-count-secondary" class="hierarchy-count">0</span>
+        </div>
+        <div class="hierarchy-pill" title="Tertiary Branches">
+          <span class="hierarchy-dot tertiary"></span>
+          <span>Ter:</span>
+          <span id="stat-count-tertiary" class="hierarchy-count">0</span>
+        </div>
+      </div>
+
+      <!-- Keep / Remove Toggles -->
+      <div class="toggle-row">
+        <span style="font-size: 12px; color: #cbd5e1;">Keep Secondary Branches</span>
+        <label class="switch">
+          <input id="toggle-keep-secondary" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row" style="margin-top: 6px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Keep Tertiary Branches</span>
+        <label class="switch">
+          <input id="toggle-keep-tertiary" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Identify Hierarchy Color-Coding Mode -->
+      <div class="toggle-row" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+        <span style="font-size: 12px; color: #cbd5e1; font-weight: 500;">Identify Branch Orders</span>
+        <label class="switch">
+          <input id="toggle-identify-hierarchy" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Hierarchy Color Pickers -->
+      <div class="hierarchy-colors-grid" id="group-hierarchy-colors" style="display: none;">
+        <div class="hierarchy-color-item">
+          <span>Primary</span>
+          <input id="input-color-primary" type="color" value="#38bdf8">
+        </div>
+        <div class="hierarchy-color-item">
+          <span>Secondary</span>
+          <input id="input-color-secondary" type="color" value="#34d399">
+        </div>
+        <div class="hierarchy-color-item">
+          <span>Tertiary</span>
+          <input id="input-color-tertiary" type="color" value="#fbbf24">
+        </div>
       </div>
     </div>
 
@@ -812,6 +881,74 @@
         <div class="color-item">
           <span>Tip Color</span>
           <input id="input-sketch-color-tip" type="color" value="#a1a1aa">
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch Hierarchy & Pruning (Sketch & Void Studio) -->
+    <div class="section" id="section-sketch-branch-hierarchy">
+      <div class="section-header">
+        <span class="section-title">Branch Hierarchy & Pruning</span>
+      </div>
+
+      <!-- Live Segment Hierarchy Counter Pill -->
+      <div class="hierarchy-legend-row" id="sketch-hierarchy-legend">
+        <div class="hierarchy-pill" title="Primary (Main Branch)">
+          <span class="hierarchy-dot primary"></span>
+          <span>Pri:</span>
+          <span id="stat-sketch-count-primary" class="hierarchy-count">0</span>
+        </div>
+        <div class="hierarchy-pill" title="Secondary Branches">
+          <span class="hierarchy-dot secondary"></span>
+          <span>Sec:</span>
+          <span id="stat-sketch-count-secondary" class="hierarchy-count">0</span>
+        </div>
+        <div class="hierarchy-pill" title="Tertiary Branches">
+          <span class="hierarchy-dot tertiary"></span>
+          <span>Ter:</span>
+          <span id="stat-sketch-count-tertiary" class="hierarchy-count">0</span>
+        </div>
+      </div>
+
+      <!-- Keep / Remove Toggles -->
+      <div class="toggle-row">
+        <span style="font-size: 12px; color: #cbd5e1;">Keep Secondary Branches</span>
+        <label class="switch">
+          <input id="toggle-sketch-keep-secondary" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row" style="margin-top: 6px;">
+        <span style="font-size: 12px; color: #cbd5e1;">Keep Tertiary Branches</span>
+        <label class="switch">
+          <input id="toggle-sketch-keep-tertiary" type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Identify Hierarchy Color-Coding Mode -->
+      <div class="toggle-row" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+        <span style="font-size: 12px; color: #cbd5e1; font-weight: 500;">Identify Branch Orders</span>
+        <label class="switch">
+          <input id="toggle-sketch-identify-hierarchy" type="checkbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Hierarchy Color Pickers -->
+      <div class="hierarchy-colors-grid" id="group-sketch-hierarchy-colors" style="display: none;">
+        <div class="hierarchy-color-item">
+          <span>Primary</span>
+          <input id="input-sketch-color-primary" type="color" value="#38bdf8">
+        </div>
+        <div class="hierarchy-color-item">
+          <span>Secondary</span>
+          <input id="input-sketch-color-secondary" type="color" value="#34d399">
+        </div>
+        <div class="hierarchy-color-item">
+          <span>Tertiary</span>
+          <input id="input-sketch-color-tertiary" type="color" value="#fbbf24">
         </div>
       </div>
     </div>

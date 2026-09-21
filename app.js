@@ -31,6 +31,14 @@ const state = {
   attractorColor: '#ffffff',
   attractorSize: 2.0,
   isRunning: false,
+
+  // Branch Hierarchy & Pruning
+  keepSecondary: true,
+  keepTertiary: true,
+  identifyHierarchy: false,
+  colorPrimary: '#38bdf8',
+  colorSecondary: '#34d399',
+  colorTertiary: '#fbbf24',
 };
 
 // --- Section Mode Algorithm Instance ---
@@ -88,6 +96,14 @@ const sketchState = {
   doodleSize: 16,
   doodleCanvas: null,
   doodleCtx: null,
+
+  // Branch Hierarchy & Pruning
+  keepSecondary: true,
+  keepTertiary: true,
+  identifyHierarchy: false,
+  colorPrimary: '#38bdf8',
+  colorSecondary: '#34d399',
+  colorTertiary: '#fbbf24',
 };
 
 const sketchSC = new SpaceColonization2D({
@@ -213,6 +229,18 @@ const ui = {
   inputAttractorSize: document.getElementById('input-attractor-size'),
   valAttractorSize: document.getElementById('val-attractor-size'),
 
+  // Section Studio Hierarchy
+  statCountPrimary: document.getElementById('stat-count-primary'),
+  statCountSecondary: document.getElementById('stat-count-secondary'),
+  statCountTertiary: document.getElementById('stat-count-tertiary'),
+  toggleKeepSecondary: document.getElementById('toggle-keep-secondary'),
+  toggleKeepTertiary: document.getElementById('toggle-keep-tertiary'),
+  toggleIdentifyHierarchy: document.getElementById('toggle-identify-hierarchy'),
+  groupHierarchyColors: document.getElementById('group-hierarchy-colors'),
+  inputColorPrimary: document.getElementById('input-color-primary'),
+  inputColorSecondary: document.getElementById('input-color-secondary'),
+  inputColorTertiary: document.getElementById('input-color-tertiary'),
+
   statNodes: document.getElementById('stat-nodes'),
   statAttractors: document.getElementById('stat-attractors'),
   statIterations: document.getElementById('stat-iterations'),
@@ -295,6 +323,19 @@ const ui = {
   toggleSketchThickness: document.getElementById('toggle-sketch-thickness'),
   inputSketchColorRoot: document.getElementById('input-sketch-color-root'),
   inputSketchColorTip: document.getElementById('input-sketch-color-tip'),
+
+  // Sketch Studio Hierarchy
+  statSketchCountPrimary: document.getElementById('stat-sketch-count-primary'),
+  statSketchCountSecondary: document.getElementById('stat-sketch-count-secondary'),
+  statSketchCountTertiary: document.getElementById('stat-sketch-count-tertiary'),
+  toggleSketchKeepSecondary: document.getElementById('toggle-sketch-keep-secondary'),
+  toggleSketchKeepTertiary: document.getElementById('toggle-sketch-keep-tertiary'),
+  toggleSketchIdentifyHierarchy: document.getElementById('toggle-sketch-identify-hierarchy'),
+  groupSketchHierarchyColors: document.getElementById('group-sketch-hierarchy-colors'),
+  inputSketchColorPrimary: document.getElementById('input-sketch-color-primary'),
+  inputSketchColorSecondary: document.getElementById('input-sketch-color-secondary'),
+  inputSketchColorTertiary: document.getElementById('input-sketch-color-tertiary'),
+  hierarchyHoverBadge: document.getElementById('hierarchy-hover-badge'),
 
   // Roots
   selectRootStrategy: document.getElementById('select-root-strategy'),
@@ -639,16 +680,27 @@ function render() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 6a. Primary Branches (Lines)
+    // 6a. Primary / Secondary / Tertiary Branches (Lines)
     for (let i = 0; i < sc.nodes.length; i++) {
       const node = sc.nodes[i];
       if (!node.parent) continue;
 
+      // Filter out secondary and/or tertiary branches if toggled off
+      if (!state.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+      if (!state.keepTertiary && node.branchOrder === 3) continue;
+
       const p1 = worldToScreen(node.parent.x, node.parent.y);
       const p2 = worldToScreen(node.x, node.y);
 
-      const t = node.depth / maxDepth;
-      ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+      // Color selection: Hierarchy Identification vs Gradient
+      if (state.identifyHierarchy) {
+        if (node.branchOrder === 1) ctx.strokeStyle = state.colorPrimary || '#38bdf8';
+        else if (node.branchOrder === 2) ctx.strokeStyle = state.colorSecondary || '#34d399';
+        else ctx.strokeStyle = state.colorTertiary || '#fbbf24';
+      } else {
+        const t = node.depth / maxDepth;
+        ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+      }
 
       // When taper is ON, taper via Murray's law scaled by thickScale.
       // When taper is OFF, draw clean uniform lines directly scaled by thickScale!
@@ -666,11 +718,21 @@ function render() {
     // 6b. Draw Closed Venation Anastomosis Loops
     if (sc.closedVenation && sc.anastomosisEdges.length > 0) {
       for (const edge of sc.anastomosisEdges) {
+        if (!state.keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!state.keepTertiary && edge.order === 3) continue;
+
         const p1 = worldToScreen(edge.nodeA.x, edge.nodeA.y);
         const p2 = worldToScreen(edge.nodeB.x, edge.nodeB.y);
-        const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
 
-        ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+        if (state.identifyHierarchy) {
+          if (edge.order === 1) ctx.strokeStyle = state.colorPrimary || '#38bdf8';
+          else if (edge.order === 2) ctx.strokeStyle = state.colorSecondary || '#34d399';
+          else ctx.strokeStyle = state.colorTertiary || '#fbbf24';
+        } else {
+          const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
+          ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+        }
+
         const loopWeight = state.showThickness
           ? Math.max(0.5, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.6 * state.thickScale * view.zoom)
           : Math.max(0.5, state.thickScale * view.zoom);
@@ -808,13 +870,27 @@ function updateStats() {
     ui.statStatus.textContent = 'Ready';
     ui.statStatus.style.color = 'var(--text-muted)';
   }
+
+  // Branch Hierarchy Segment Counters (Section Studio & Sketch Studio)
+  const sectionCounts = sc.getBranchCounts();
+  if (ui.statCountPrimary) ui.statCountPrimary.textContent = sectionCounts.primary.toLocaleString();
+  if (ui.statCountSecondary) ui.statCountSecondary.textContent = sectionCounts.secondary.toLocaleString();
+  if (ui.statCountTertiary) ui.statCountTertiary.textContent = sectionCounts.tertiary.toLocaleString();
+
+  const sketchCounts = sketchSC.getBranchCounts();
+  if (ui.statSketchCountPrimary) ui.statSketchCountPrimary.textContent = sketchCounts.primary.toLocaleString();
+  if (ui.statSketchCountSecondary) ui.statSketchCountSecondary.textContent = sketchCounts.secondary.toLocaleString();
+  if (ui.statSketchCountTertiary) ui.statSketchCountTertiary.textContent = sketchCounts.tertiary.toLocaleString();
 }
 
 // --- Simulation Step & Cycle ---
 function doStep() {
   const activeSC = state.mode === 'sketch' ? sketchSC : sc;
   const isRunning = state.mode === 'sketch' ? sketchState.isRunning : state.isRunning;
-  if (activeSC.isFinished) return false;
+  if (activeSC.isFinished) {
+    if (isRunning) toggleRunning(false);
+    return false;
+  }
   const active = activeSC.step();
   render();
   updateStats();
@@ -825,8 +901,19 @@ function doStep() {
 }
 
 function toggleRunning(forced) {
+  const activeSC = state.mode === 'sketch' ? sketchSC : sc;
+  const isCurrentlyRunning = state.mode === 'sketch' ? sketchState.isRunning : state.isRunning;
+  const willRun = forced !== undefined ? forced : !isCurrentlyRunning;
+
+  // If user hits Play but simulation is already complete, reset tree to replay growth from seeds
+  if (willRun && activeSC.isFinished) {
+    activeSC.resetTree();
+    render();
+    updateStats();
+  }
+
   if (state.mode === 'sketch') {
-    sketchState.isRunning = forced !== undefined ? forced : !sketchState.isRunning;
+    sketchState.isRunning = willRun;
     if (sketchState.isRunning) {
       if (ui.btnSketchPlay) {
         ui.btnSketchPlay.innerHTML = `
@@ -847,7 +934,7 @@ function toggleRunning(forced) {
       }
     }
   } else {
-    state.isRunning = forced !== undefined ? forced : !state.isRunning;
+    state.isRunning = willRun;
     if (state.isRunning) {
       ui.btnPlay.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
@@ -882,6 +969,7 @@ window.addEventListener('pointerdown', (e) => {
 
 canvas.addEventListener('pointerdown', (e) => {
   commitActiveValInput();
+  if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
   // Middle click or Space key triggers panning
   if (e.button === 1 || e.shiftKey || e.altKey) {
     isPanning = true;
@@ -995,6 +1083,7 @@ canvas.addEventListener('pointerdown', (e) => {
 
 window.addEventListener('pointermove', (e) => {
   if (isPanning) {
+    if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
     const dx = e.clientX - dragStart.sx;
     const dy = e.clientY - dragStart.sy;
     view.panX += dx;
@@ -1012,10 +1101,13 @@ window.addEventListener('pointermove', (e) => {
     return;
   }
 
-  // Dynamic Cursor Feedback when hovering
+  // Dynamic Cursor Feedback and Branch Hierarchy Inspection when hovering
   if (!isInteracting) {
     updateHoverCursor(wCoords);
+    checkBranchHover(e.clientX, e.clientY, wCoords);
     return;
+  } else {
+    if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
   }
 
   currentMouse.sx = e.clientX;
@@ -1139,6 +1231,111 @@ window.addEventListener('pointerup', (e) => {
     triggerLiveUpdate();
   }
 });
+
+canvas.addEventListener('pointerleave', () => {
+  if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
+});
+
+// Interactive Branch Hierarchy Tooltip Inspection
+function checkBranchHover(clientX, clientY, wCoords) {
+  if (!ui.hierarchyHoverBadge) return;
+
+  const activeSC = state.mode === 'sketch' ? sketchSC : sc;
+  const activeState = state.mode === 'sketch' ? sketchState : state;
+
+  if (!activeSC.nodes || activeSC.nodes.length <= activeSC.roots.length) {
+    ui.hierarchyHoverBadge.style.display = 'none';
+    return;
+  }
+
+  const thresholdWorld = 12 / view.zoom;
+  const thresholdSq = thresholdWorld * thresholdWorld;
+  let closestNode = null;
+  let minDistSq = thresholdSq;
+
+  const nodes = activeSC.nodes;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (!node.parent) continue;
+
+    // Filter out hidden branch orders
+    if (!activeState.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+    if (!activeState.keepTertiary && node.branchOrder === 3) continue;
+
+    const p1x = node.parent.x;
+    const p1y = node.parent.y;
+    const p2x = node.x;
+    const p2y = node.y;
+
+    // Fast 2D bounding box test
+    const minX = Math.min(p1x, p2x) - thresholdWorld;
+    const maxX = Math.max(p1x, p2x) + thresholdWorld;
+    if (wCoords.x < minX || wCoords.x > maxX) continue;
+
+    const minY = Math.min(p1y, p2y) - thresholdWorld;
+    const maxY = Math.max(p1y, p2y) + thresholdWorld;
+    if (wCoords.y < minY || wCoords.y > maxY) continue;
+
+    // Point-to-segment distance squared
+    const dx = p2x - p1x;
+    const dy = p2y - p1y;
+    const lenSq = dx * dx + dy * dy;
+    let distSq;
+    if (lenSq === 0) {
+      const dpx = wCoords.x - p1x;
+      const dpy = wCoords.y - p1y;
+      distSq = dpx * dpx + dpy * dpy;
+    } else {
+      let t = ((wCoords.x - p1x) * dx + (wCoords.y - p1y) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const nearX = p1x + t * dx;
+      const nearY = p1y + t * dy;
+      const dpx = wCoords.x - nearX;
+      const dpy = wCoords.y - nearY;
+      distSq = dpx * dpx + dpy * dpy;
+    }
+
+    if (distSq < minDistSq) {
+      minDistSq = distSq;
+      closestNode = node;
+    }
+  }
+
+  if (closestNode) {
+    let orderLabel = 'PRIMARY (MAIN)';
+    let orderColor = activeState.colorPrimary || '#38bdf8';
+    if (closestNode.branchOrder === 2) {
+      orderLabel = 'SECONDARY';
+      orderColor = activeState.colorSecondary || '#34d399';
+    } else if (closestNode.branchOrder === 3) {
+      orderLabel = 'TERTIARY';
+      orderColor = activeState.colorTertiary || '#fbbf24';
+    }
+
+    const caliber = activeState.showThickness
+      ? (closestNode.thickness * 0.75 * (activeState.thickScale || 1.5)).toFixed(1)
+      : (activeState.thickScale || 1.5).toFixed(1);
+
+    ui.hierarchyHoverBadge.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${orderColor};box-shadow:0 0 6px ${orderColor};"></span>
+        <strong style="color:#ffffff;letter-spacing:0.5px;">${orderLabel}</strong>
+        <span style="color:rgba(255,255,255,0.3);">|</span>
+        <span style="color:#cbd5e1;">Depth ${closestNode.depth}</span>
+        <span style="color:rgba(255,255,255,0.3);">|</span>
+        <span style="color:#cbd5e1;">Ø ${caliber}px</span>
+      </div>
+    `;
+
+    const badgeX = Math.min(window.innerWidth - 230, clientX + 14);
+    const badgeY = Math.max(10, clientY - 36);
+    ui.hierarchyHoverBadge.style.left = `${badgeX}px`;
+    ui.hierarchyHoverBadge.style.top = `${badgeY}px`;
+    ui.hierarchyHoverBadge.style.display = 'block';
+  } else {
+    ui.hierarchyHoverBadge.style.display = 'none';
+  }
+}
 
 function updateHoverCursor(wCoords) {
   const root = sc.getRootNear(wCoords.x, wCoords.y, 16);
@@ -1390,12 +1587,66 @@ if (ui.inputAttractorSize) {
   ui.inputAttractorSize.addEventListener('change', () => history.push());
 }
 
+// --- Branch Hierarchy & Pruning (Section Studio) ---
+if (ui.toggleKeepSecondary) {
+  ui.toggleKeepSecondary.addEventListener('change', (e) => {
+    state.keepSecondary = e.target.checked;
+    render();
+  });
+}
+
+if (ui.toggleKeepTertiary) {
+  ui.toggleKeepTertiary.addEventListener('change', (e) => {
+    state.keepTertiary = e.target.checked;
+    render();
+  });
+}
+
+if (ui.toggleIdentifyHierarchy) {
+  ui.toggleIdentifyHierarchy.addEventListener('change', (e) => {
+    state.identifyHierarchy = e.target.checked;
+    if (ui.groupHierarchyColors) {
+      ui.groupHierarchyColors.style.display = state.identifyHierarchy ? 'block' : 'none';
+    }
+    render();
+  });
+}
+
+if (ui.inputColorPrimary) {
+  ui.inputColorPrimary.addEventListener('input', (e) => {
+    state.colorPrimary = e.target.value;
+    render();
+  });
+}
+
+if (ui.inputColorSecondary) {
+  ui.inputColorSecondary.addEventListener('input', (e) => {
+    state.colorSecondary = e.target.value;
+    render();
+  });
+}
+
+if (ui.inputColorTertiary) {
+  ui.inputColorTertiary.addEventListener('input', (e) => {
+    state.colorTertiary = e.target.value;
+    render();
+  });
+}
+
 // --- Exporters ---
 // 1. SVG Vector Exporter
 if (ui.btnExportSvg) {
   ui.btnExportSvg.addEventListener('click', () => {
     const activeSC = state.mode === 'sketch' ? sketchSC : sc;
-    const svgData = activeSC.exportToSVG(1600, 1000, state.colorRoot, state.colorTip, state.showThickness);
+    const activeState = state.mode === 'sketch' ? sketchState : state;
+    const svgData = activeSC.exportToSVG(1600, 1000, activeState.colorRoot, activeState.colorTip, activeState.showThickness, {
+      keepSecondary: activeState.keepSecondary,
+      keepTertiary: activeState.keepTertiary,
+      identifyHierarchy: activeState.identifyHierarchy,
+      colorPrimary: activeState.colorPrimary,
+      colorSecondary: activeState.colorSecondary,
+      colorTertiary: activeState.colorTertiary,
+    });
     const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1409,7 +1660,11 @@ if (ui.btnExportSvg) {
 if (ui.btnExportDxf) {
   ui.btnExportDxf.addEventListener('click', () => {
     const activeSC = state.mode === 'sketch' ? sketchSC : sc;
-    const dxfData = activeSC.exportToDXF();
+    const activeState = state.mode === 'sketch' ? sketchState : state;
+    const dxfData = activeSC.exportToDXF({
+      keepSecondary: activeState.keepSecondary,
+      keepTertiary: activeState.keepTertiary,
+    });
     const blob = new Blob([dxfData], { type: 'application/dxf;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1423,8 +1678,12 @@ if (ui.btnExportDxf) {
 if (ui.btnExportObj) {
   ui.btnExportObj.addEventListener('click', () => {
     const activeSC = state.mode === 'sketch' ? sketchSC : sc;
-    const caliber = state.mode === 'sketch' ? (sketchState.thickScale || 1.8) : state.thickScale;
-    const objData = activeSC.exportToOBJ(8, caliber);
+    const activeState = state.mode === 'sketch' ? sketchState : state;
+    const caliber = activeState.thickScale || 1.8;
+    const objData = activeSC.exportToOBJ(8, caliber, {
+      keepSecondary: activeState.keepSecondary,
+      keepTertiary: activeState.keepTertiary,
+    });
     const blob = new Blob([objData], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1575,16 +1834,28 @@ function renderSketchMode(w, h) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Primary Branches
+    // 6a. Primary / Secondary / Tertiary Branches (Lines)
     for (let i = 0; i < sketchSC.nodes.length; i++) {
       const node = sketchSC.nodes[i];
       if (!node.parent) continue;
 
+      // Filter out secondary and/or tertiary branches if toggled off
+      if (!sketchState.keepSecondary && (node.branchOrder === 2 || node.branchOrder === 3)) continue;
+      if (!sketchState.keepTertiary && node.branchOrder === 3) continue;
+
       const p1 = worldToScreen(node.parent.x, node.parent.y);
       const p2 = worldToScreen(node.x, node.y);
-      const t = node.depth / maxDepth;
 
-      ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+      // Color selection: Hierarchy Identification vs Gradient
+      if (sketchState.identifyHierarchy) {
+        if (node.branchOrder === 1) ctx.strokeStyle = sketchState.colorPrimary || '#38bdf8';
+        else if (node.branchOrder === 2) ctx.strokeStyle = sketchState.colorSecondary || '#34d399';
+        else ctx.strokeStyle = sketchState.colorTertiary || '#fbbf24';
+      } else {
+        const t = node.depth / maxDepth;
+        ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+      }
+
       const lineWeight = sketchState.showThickness
         ? Math.max(0.5, (node.thickness * 0.75 * sketchState.thickScale) * view.zoom)
         : Math.max(0.5, sketchState.thickScale * view.zoom);
@@ -1596,14 +1867,24 @@ function renderSketchMode(w, h) {
       ctx.stroke();
     }
 
-    // Anastomosis Loops
+    // 6b. Draw Closed Venation Anastomosis Loops
     if (sketchSC.closedVenation && sketchSC.anastomosisEdges && sketchSC.anastomosisEdges.length > 0) {
       for (const edge of sketchSC.anastomosisEdges) {
+        if (!sketchState.keepSecondary && (edge.order === 2 || edge.order === 3)) continue;
+        if (!sketchState.keepTertiary && edge.order === 3) continue;
+
         const p1 = worldToScreen(edge.nodeA.x, edge.nodeA.y);
         const p2 = worldToScreen(edge.nodeB.x, edge.nodeB.y);
-        const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
 
-        ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+        if (sketchState.identifyHierarchy) {
+          if (edge.order === 1) ctx.strokeStyle = sketchState.colorPrimary || '#38bdf8';
+          else if (edge.order === 2) ctx.strokeStyle = sketchState.colorSecondary || '#34d399';
+          else ctx.strokeStyle = sketchState.colorTertiary || '#fbbf24';
+        } else {
+          const t = (edge.nodeA.depth + edge.nodeB.depth) / (2 * maxDepth);
+          ctx.strokeStyle = lerpColor(rgbRoot, rgbTip, t);
+        }
+
         const loopWeight = sketchState.showThickness
           ? Math.max(0.5, Math.min(edge.nodeA.thickness, edge.nodeB.thickness) * 0.6 * sketchState.thickScale * view.zoom)
           : Math.max(0.5, sketchState.thickScale * view.zoom);
@@ -1687,12 +1968,14 @@ function handleSketchPointerDown(e, wPt) {
 
 function handleSketchPointerMove(e, wCoords) {
   if (dragAction && dragAction.type === 'doodle') {
+    if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
     paintDoodleStroke(wCoords.x, wCoords.y, false);
     render();
     return;
   }
 
   if (dragAction && dragAction.type === 'move-sketch-root') {
+    if (ui.hierarchyHoverBadge) ui.hierarchyHoverBadge.style.display = 'none';
     const root = sketchSC.roots.find((r) => r.id === dragAction.rootId);
     if (root) {
       root.x = wCoords.x;
@@ -1704,6 +1987,9 @@ function handleSketchPointerMove(e, wCoords) {
     }
     return;
   }
+
+  // Branch Hierarchy Inspection in Sketch & Void Studio
+  checkBranchHover(e.clientX, e.clientY, wCoords);
 }
 
 function handleSketchPointerUp(e) {
@@ -2416,7 +2702,53 @@ function initSketchStudio() {
     });
   }
 
-  // 6e. Root Seeding Strategy
+  // 6e. Branch Hierarchy & Pruning (Sketch & Void Studio)
+  if (ui.toggleSketchKeepSecondary) {
+    ui.toggleSketchKeepSecondary.addEventListener('change', (e) => {
+      sketchState.keepSecondary = e.target.checked;
+      render();
+    });
+  }
+
+  if (ui.toggleSketchKeepTertiary) {
+    ui.toggleSketchKeepTertiary.addEventListener('change', (e) => {
+      sketchState.keepTertiary = e.target.checked;
+      render();
+    });
+  }
+
+  if (ui.toggleSketchIdentifyHierarchy) {
+    ui.toggleSketchIdentifyHierarchy.addEventListener('change', (e) => {
+      sketchState.identifyHierarchy = e.target.checked;
+      if (ui.groupSketchHierarchyColors) {
+        ui.groupSketchHierarchyColors.style.display = sketchState.identifyHierarchy ? 'block' : 'none';
+      }
+      render();
+    });
+  }
+
+  if (ui.inputSketchColorPrimary) {
+    ui.inputSketchColorPrimary.addEventListener('input', (e) => {
+      sketchState.colorPrimary = e.target.value;
+      render();
+    });
+  }
+
+  if (ui.inputSketchColorSecondary) {
+    ui.inputSketchColorSecondary.addEventListener('input', (e) => {
+      sketchState.colorSecondary = e.target.value;
+      render();
+    });
+  }
+
+  if (ui.inputSketchColorTertiary) {
+    ui.inputSketchColorTertiary.addEventListener('input', (e) => {
+      sketchState.colorTertiary = e.target.value;
+      render();
+    });
+  }
+
+  // 6f. Root Seeding Strategy
   if (ui.selectRootStrategy) {
     ui.selectRootStrategy.addEventListener('change', (e) => {
       sketchState.rootStrategy = e.target.value;
@@ -2667,6 +2999,7 @@ function loop(time) {
 // Initial Boot
 resizeCanvas();
 selectShape(initialCanopy.id);
+sc.runToCompletion(220);
 initSliderBounds();
 initValueInputs();
 initSketchStudio();
