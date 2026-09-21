@@ -189,6 +189,8 @@ export class SpaceColonization2D {
     this.curvilinearSmoothness = options.curvilinearSmoothness !== undefined ? options.curvilinearSmoothness : 0.5;
     this.closedVenation = options.closedVenation || false; // Open (tree) vs Closed (anastomosing loops)
     this.loopRate = options.loopRate !== undefined ? options.loopRate : 0.5; // Anastomosis loop density
+    this.boundaryGrid = options.boundaryGrid || null; // Optional SolidVoidGrid for obstacle avoidance
+    this.targetMode = options.targetMode || 'void'; // 'void' or 'solid'
 
     this.nodes = [];
     this.roots = []; // Array of { id, x, y }
@@ -308,6 +310,17 @@ export class SpaceColonization2D {
       this.attractors.push(pt);
     }
     this.isFinished = false;
+  }
+
+  getAllAttractors() {
+    const list = [];
+    for (const shape of this.shapes) {
+      if (shape.attractors) list.push(...shape.attractors);
+    }
+    for (const pt of this.manualPoints) {
+      list.push(pt);
+    }
+    return list;
   }
 
   addPointAttractor(x, y) {
@@ -480,6 +493,15 @@ export class SpaceColonization2D {
         // Add child node
         const childX = node.x + dirX * this.segmentLength;
         const childY = node.y + dirY * this.segmentLength;
+
+        // Boundary collision check
+        if (this.boundaryGrid) {
+          const isClear = this.boundaryGrid.isRayClear(node.x, node.y, childX, childY, this.targetMode);
+          if (!isClear) {
+            continue;
+          }
+        }
+
         const child = new TreeNode2D(childX, childY, node, node.depth + 1);
         node.children.push(child);
         this.nodes.push(child);
@@ -555,6 +577,10 @@ export class SpaceColonization2D {
         const distSq = dx * dx + dy * dy;
 
         if (distSq <= maxDistSq) {
+          if (this.boundaryGrid) {
+            const isClear = this.boundaryGrid.isRayClear(u.x, u.y, v.x, v.y, this.targetMode);
+            if (!isClear) continue;
+          }
           this.anastomosisEdges.push({ nodeA: u, nodeB: v });
           linkCounts.set(u.id, uLinks + 1);
           linkCounts.set(v.id, vLinks + 1);
